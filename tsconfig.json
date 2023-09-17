@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+
+    "emitDeclarationOnly": true,
+    "declaration": true,
+
+    "strict": true,
+    // "outDir": "dist",
+    "target": "es6",
+    // "module": "none",             
+    // "sourceMap": true,
+ 
+    "esModuleInterop": true, 
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
