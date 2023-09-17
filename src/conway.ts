@@ -1,23 +1,27 @@
-import Cell from "./cell";
+import Cell, { CellCoordinate } from "./cell";
 
 class Conway {
-    cells: Cell[] = []
+    // String = coordinate hash for faster lookup, better readability and future expansion
+    // caveat: possibly big memory footprint when going all out
+    cells: Map<string, Cell> = new Map()
+
     canvasElement: HTMLCanvasElement|null
     canvasContext: CanvasRenderingContext2D|null
-    fps: number = 1;
+
+    fps: number = 2
+    resolution: number = 10
 
     constructor (canvasElement: HTMLCanvasElement) {
         this.canvasElement = canvasElement as HTMLCanvasElement
         this.canvasContext = this.canvasElement!.getContext("2d")
 
         // load cells / game
-        this.cells.push(new Cell(100, 100, 10))
+        // ...
 
         requestAnimationFrame(this.draw);       
     }
 
     draw = () => {
-        const CELL_WIDTH = 10
         this.clear()
         
         console.info("drawing...")
@@ -53,6 +57,37 @@ class Conway {
             cell.size,
             cell.size
         );
+    }
+
+    addCellAtCoordinate = (x: number, y: number): boolean => {
+        // make sure x, y fits on our grid
+        const roundedX = this.roundToNearest(x)
+        const roundedY = this.roundToNearest(y)
+        const coordinate = this.createCellCoordinate(roundedX, roundedY)
+
+        if (this.hasCellAtCoordinate(coordinate)) {
+            console.info('lets not create cells on top of eachother (yet?)')
+            return false
+        }
+
+        this.cells.set(
+            coordinate, 
+            new Cell(roundedX, roundedY, this.resolution)
+        )
+
+        return true
+    }
+
+    private hasCellAtCoordinate = (coordinate: CellCoordinate): boolean => {
+        return this.cells.has(coordinate)
+    }
+
+    private createCellCoordinate = (x: number, y: number): CellCoordinate => {
+        return `[${x}:${y}]`
+    }
+
+    private roundToNearest = (number: number, nearest: number = this.resolution): number=> {
+        return Math.floor(number / nearest) * nearest
     }
 }
 

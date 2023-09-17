@@ -1,6 +1,7 @@
 import Conway from "./conway"
 
 const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
+const ConwayInstance = new Conway(canvasElement)
 
 const resizeCanvas = () => {
     canvasElement.width = window.innerWidth;
@@ -9,8 +10,10 @@ const resizeCanvas = () => {
 
 window.addEventListener('resize', resizeCanvas, false);
 
-resizeCanvas()
+window.addEventListener('mousedown', (event: MouseEvent) => {
+    ConwayInstance.addCellAtCoordinate(event.clientX, event.clientY)
+}, false);
 
-const ConwayInstance = new Conway(canvasElement)
+resizeCanvas()
 
 console.info(ConwayInstance)
