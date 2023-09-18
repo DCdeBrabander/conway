@@ -4,7 +4,7 @@ class Cell {
     y: number = 0
     size: number = 0
 
-    updated: boolean = false
+    example: boolean = false
     alive: boolean = true
     aliveNeighbours: number = 0
 

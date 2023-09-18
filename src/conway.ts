@@ -7,19 +7,23 @@ export enum States {
 class Conway {
     private theme = {
         grid: "#AAA",
-        cell: "#FFF",
+        cell: {
+            alive: "#FFF",
+            example: "#AAA",
+        },
         background: "#444"
     }
     
     private grid: Cell[][] = []
-
+    private previewCells: Cell[][] = []
+ 
     private canvasElement: HTMLCanvasElement|null
     private canvasContext: CanvasRenderingContext2D|null
 
     private fps: number
     private resolution: number
 
-    currentState: States = States.PAUSED
+    public currentState: States = States.PAUSED
 
     private heightOffset = document.querySelector('#info')?.clientHeight ?? 0
     private resizeTimeout: NodeJS.Timeout
@@ -50,14 +54,16 @@ class Conway {
     private draw = () => {
         this.clear()
 
-        this.drawGrid()
-        this.drawCells()
 
         // Only update if running, this allows us to draw :-) 
         if (this.currentState == States.RUNNING) {
             this.update()
         }
-        
+
+        this.drawPreviewCells()  
+        this.drawLivingCells()
+        this.drawGrid()
+
         setTimeout(() => {
             requestAnimationFrame(this.draw)
         }, 1000 / this.fps)
@@ -98,17 +104,6 @@ class Conway {
         )
     }
 
-    setCanvasSize = (width: number, height: number) => {
-        const fixedWith = this.roundToNearest(width)
-        const fixedHeight = this.roundToNearest(height - this.heightOffset)
-
-        this.canvasElement!.style.width = fixedWith + "px"
-        this.canvasElement!.style.height = fixedHeight + "px"
-
-        this.canvasElement!.width = fixedWith
-        this.canvasElement!.height = fixedHeight
-    }
-
     private onResize = () => {
         clearTimeout(this.resizeTimeout)
         this.resizeTimeout = setTimeout(() => {     
@@ -146,10 +141,19 @@ class Conway {
         })
     }
 
-    private drawCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => cell.alive && this.drawCell(cell)))
+    private drawPreviewCells = () => this.previewCells.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => this.drawCell(cell)))
 
-    private drawCell = (cell: Cell) => {
-        this.canvasContext!.fillStyle = this.theme.cell
+    private drawLivingCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => this.drawCell(cell)))
+
+    private drawCell = (cell: Cell): void => {
+        if (cell.alive) {
+            this.canvasContext!.fillStyle = this.theme.cell.alive
+        } else if (cell.example) {
+            this.canvasContext!.fillStyle = this.theme.cell.example
+        } else {
+            return
+        }
+
         this.canvasContext!.fillRect(
             cell.x,
             cell.y,
@@ -162,7 +166,7 @@ class Conway {
         return this.grid[x][y]
     }
 
-    private overflowPosition = (x: number, y: number): {x: number, y: number} => {
+    private overflowPosition = (x: number, y: number): { x: number, y: number } => {
         const overflowedCoordinate = { x, y }
 
         const { width, height } = this.canvasElement!
@@ -180,6 +184,23 @@ class Conway {
         }
 
         return overflowedCoordinate
+    }
+
+    showPreviewCell = (x: number, y: number) => {
+        this.previewCells = this.getNewGrid()
+        const cell = this.previewCells[this.roundToNearest(x)][this.roundToNearest(y)]
+        cell.example = true
+    }
+
+    setCanvasSize = (width: number, height: number): void => {
+        const fixedWith = this.roundToNearest(width)
+        const fixedHeight = this.roundToNearest(height - this.heightOffset)
+
+        this.canvasElement!.style.width = fixedWith + "px"
+        this.canvasElement!.style.height = fixedHeight + "px"
+
+        this.canvasElement!.width = fixedWith
+        this.canvasElement!.height = fixedHeight
     }
 
     setGameState = (state: States) => this.currentState = state
@@ -203,7 +224,7 @@ class Conway {
         return alive
     }
 
-    toggleCellAtCoordinate = (x: number, y: number) => {
+    toggleCellAtCoordinate = (x: number, y: number): void => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
         const cell = this.getCellAt(roundedX, roundedY)

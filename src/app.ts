@@ -35,3 +35,10 @@ window.addEventListener('keyup', (event: KeyboardEvent) => {
     document.title = "Conway's Game of Life - " + currentState
     stateInfoElement!.innerHTML = currentState
 }, false)
+
+canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
+    ConwayInstance.showPreviewCell(
+        event.clientX - canvasElement.offsetLeft,
+        event.clientY - canvasElement.offsetTop
+    )
+}, false)
