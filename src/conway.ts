@@ -5,100 +5,86 @@ export enum States {
     RUNNING
 }
 class Conway {
-    // String = coordinate hash for faster lookup, better readability and future expansion
-    // caveat: possibly big memory footprint when going all out
-    cells: Map<string, Cell> = new Map()
+    grid: Cell[][] = []
 
     canvasElement: HTMLCanvasElement|null
     canvasContext: CanvasRenderingContext2D|null
 
-    canvasWidth: number = 0
-    canvasHeight: number = 0
-
-    fps: number = 1
-    resolution: number = 50
+    fps: number = 3
+    resolution: number = 100
 
     currentState: States = States.PAUSED
 
-    constructor (canvasElement: HTMLCanvasElement) {
+    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10) {
         this.canvasElement = canvasElement as HTMLCanvasElement
         this.canvasContext = this.canvasElement!.getContext("2d")
+
+        this.resolution = cellSize
 
         this.init()
     }
 
     init = () => {
-        this.canvasWidth = this.canvasElement?.width ?? 0
-        this.canvasHeight = this.canvasElement?.height ?? 0
-        
-        console.info(this.canvasWidth + "x" + this.canvasHeight)
+        this.setGameState(States.PAUSED)
 
-        // Always create cell instance for each grid coordinate
-        for (let x = 0; x <= this.canvasWidth; x += this.resolution) {
-            for (let y = 0; y <= this.canvasHeight; y += this.resolution) {
-                if (!this.hasCellAtXY(x, y)) {
-                    this.addCellAtCoordinate(x, y, false)
-                }
+        window.addEventListener('resize', this.resizeCanvas, false);
+        this.resizeCanvas()
+        
+        // Create all cell instances for every grid coordinate
+        this.grid = this.getNewGrid()
+
+        requestAnimationFrame(this.draw);       
+    }
+
+    resizeCanvas = () => {
+        this.canvasElement!.width = this.roundToNearest(window.innerWidth)
+        this.canvasElement!.height = this.roundToNearest(window.innerHeight)
+    }
+
+    getNewGrid = () => {
+        let grid: Cell[][] = [];
+
+        for (let x = 0; x <= this.canvasElement?.width!; x += this.resolution) {
+            grid[x] = []
+            for (let y = 0; y <= this.canvasElement?.height!; y += this.resolution) {     
+                grid[x][y] = new Cell(x, y, false)
             }
         }
 
-        requestAnimationFrame(this.draw);       
+        return grid
     }
 
     draw = () => {
         this.clear()
 
-        this.cells.forEach((cell: Cell) => {
-            if (cell.alive) {
-                this.drawCell(cell)
-            }
-            // else {
-            //     this.cells.delete(cell.getCoordinateString())
-            // }
-        })
-    
-        // TODO version 2: Get areas of living cells and only check around those cells?
-        // This should increase loop a lot in many cases
-    
-        setTimeout(() => {
-            // Only update if running, this allows us to draw :-) 
-            if (this.currentState == States.RUNNING) {
-                this.update()
-            }
+        this.drawCells()
 
+        // Only update if running, this allows us to draw :-) 
+        if (this.currentState == States.RUNNING) {
+            this.update()
+        }
+        
+        setTimeout(() => {
             requestAnimationFrame(this.draw)
         }, 1000 / this.fps);
     }
 
     // version 1: Loop through grid checking all cells
     // Mark each cell as dead or alive so we can update state and draw accordingly
+    // --
+    // TODO version 2: Get areas of living cells and only check around those cells?
+    // This should increase loop a lot in many cases
     update = () => {
-        for (let x = 0; x < this.canvasWidth; x += this.resolution) {
-            for (let y = 0; y < this.canvasHeight; y += this.resolution) {
-                const aliveNeigbours = this.getAliveNeighboursForCoordinate(x, y)
-                const cell = this.getCellByCoordinateKey(this.createCellCoordinate(x, y))!
+        const newGrid = this.getNewGrid()
 
-                if (aliveNeigbours > 1) {
-                    console.log(x, y, aliveNeigbours, cell)
-                    // debugger
-                }
+        this.grid.forEach((row, x) => {
+            row.forEach((cell, y) => {
+                cell.setAliveNeighbours(this.countAliveNeighboursForCell(cell))
+                newGrid[x][y].alive = this.isCellAlive(cell)
+            }) 
+        })
 
-                // Any live cell with two or three live neighbours survives.
-                if (cell.alive) {
-                    if (aliveNeigbours == 2 || aliveNeigbours == 3) {
-                        continue
-                    }
-                } else {
-                    if (aliveNeigbours == 3) {
-                        cell.alive = true
-                        continue 
-                    }
-                }
-
-                // All other cells die or stay dead
-                cell.alive = false
-            }
-        }
+        this.grid = newGrid
     }
 
     clear = () => {
@@ -118,131 +104,94 @@ class Conway {
         )
     }
 
+    isCellAlive = (cell: Cell) => {
+        let alive = cell.alive
+        cell.aliveNeighbours = this.countAliveNeighboursForCell(cell)
+
+        if (!cell.alive) {
+            if (cell.aliveNeighbours === 3) {
+                alive = true
+            }
+        } else {
+            if (cell.aliveNeighbours === 2 || cell.aliveNeighbours === 3) {
+                alive = true
+            } else {
+                alive = false
+            }
+        }
+
+        return alive
+    }
+
+    setGameState = (state: States) => this.currentState = state
+
+    drawCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => cell.alive && this.drawCell(cell)))
+
     drawCell = (cell: Cell) => {
         this.canvasContext!.fillStyle = "white";
         this.canvasContext!.fillRect(
             cell.x,
             cell.y,
-            cell.size,
-            cell.size
-        );
+            this.resolution,
+            this.resolution
+        )
     }
 
-    addCellAtCoordinate = (x: number, y: number, alive: boolean = true): Cell => {
-        // make sure x, y fits on our grid
+    toggleCellAtCoordinate = (x: number, y: number) => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
-        const coordinate = this.createCellCoordinate(roundedX, roundedY)
 
-        if (alive) {
-            console.info("Bring cell to life at ", coordinate)
+        const cell = this.getCellAt(roundedX, roundedY)
+
+        if (!this.getCellAt(roundedX, roundedY)) {
+            return
         }
 
-        if (this.hasCellAtCoordinateKey(coordinate)) {
-            const cell = this.getCellByCoordinateKey(coordinate)!
-            cell.alive = true
-            return cell
-        }
-
-        const cell = new Cell(roundedX, roundedY, this.resolution)
-        cell.alive = alive
-
-        this.cells.set(
-            coordinate, 
-            cell
-        )
-
-        return cell
+        cell.alive = !cell.alive
     }
 
-    setGameState = (state: States) => {
-        console.info("Updating game state to: ", state)
-        this.currentState = state
-    }
-
-    private getAliveNeighboursForCell = (cell: Cell): number => {
-        return this.getAliveNeighboursForCoordinate(cell.x, cell.y)
-    }
-    
-    private getAliveNeighboursForCoordinate = (x: number, y: number): number => {
-        /**
-         * 1,  2,  3
-         * 4, X/Y, 5
-         * 6.  7,  8
-         */
-
+    countAliveNeighboursForCell = (cell: Cell) => {
         let aliveNeigbours = 0
         let res = this.resolution
+        const { x, y } = cell
 
         // infinite
         const cellMatrix = [
             // 'top'
-            [
-                { ...this.getOverflowCoordinate(x - res, y - res) },    // left
-                { ...this.getOverflowCoordinate(x, y - res) },          // middle
-                { ...this.getOverflowCoordinate(x + res, y - res) }     // right
-            ],
+            this.getOverflowCoordinate(x - res, y - res),   // left
+            this.getOverflowCoordinate(x,       y - res),   // middle
+            this.getOverflowCoordinate(x + res, y - res),   // right
+            
             // 'middle'
-            [
-                { ...this.getOverflowCoordinate(x - res, y) },          // left
-                // current cell
-                { ...this.getOverflowCoordinate(x + res, y) }           // right
-            ],
-            // 'bottom'
-            [
-                { ...this.getOverflowCoordinate(x - res, y + res) },    // left
-                { ...this.getOverflowCoordinate(x, y + res) },          // middle
-                { ...this.getOverflowCoordinate(x + res, y + res) }     // right
-            ]
-        ]
+            this.getOverflowCoordinate(x - res, y),         // left
+            // -- current X / Y 
+            this.getOverflowCoordinate(x + res, y),         // right
         
-        cellMatrix.forEach((row) => {
-            row.forEach((cell) => {
-                aliveNeigbours = this.getCellByXY(cell.x, cell.y).alive 
-                    ? aliveNeigbours + 1 
-                    : aliveNeigbours
-            })
-        })
+            // 'bottom'    
+            this.getOverflowCoordinate(x - res, y + res),   // left
+            this.getOverflowCoordinate(x,       y + res),   // middle
+            this.getOverflowCoordinate(x + res, y + res)    // right
+        ]
+
+        for (const coordinate of cellMatrix) {
+            if (this.getCellAt(coordinate.x, coordinate.y).alive) {
+                aliveNeigbours++
+            }
+        }
 
         return aliveNeigbours
     }
 
-    private hasCellAtXY = (x: number, y: number): boolean => {
-        const coordinate = this.createCellCoordinate(x, y)
-        return this.hasCellAtCoordinateKey(coordinate)
-    }
-    
-    private getCellByXY = (x: number, y: number): Cell => {
-        return this.getCellByCoordinateKey(this.createCellCoordinate(x, y))!
+    private getCellAt = (x: number, y: number): Cell => {
+        return this.grid[x][y]
     }
 
-    private hasCellAtCoordinateKey = (coordinate: CellCoordinate): boolean => {
-        return this.cells.has(coordinate)
-    }
-
-    private getCellByCoordinateKey = (coordinate: CellCoordinate): Cell => {
-        if (!this.cells.has(coordinate)) {
-            throw new Error(`Major issue: cell not found but should be initialized... (${coordinate})`)
-        }
-
-        return this.cells.get(coordinate)!
-
-    }
-
-    private createCellCoordinate = (x: number, y: number): CellCoordinate => {
-        if (x < 0 || y < 0) {
-            throw new Error (`createCellCoordinate: Invalid coordinates given! (${x}:${y})`)
-        }
-        return `[${x}:${y}]`
-    }
-
-    private roundToNearest = (number: number, nearest: number = this.resolution): number=> {
+    roundToNearest = (number: number, nearest: number = this.resolution): number=> {
         return Math.floor(number / nearest) * nearest
     }
 
     private getOverflowCoordinate = (x: number, y: number) => {
         const overflowedCoordinate = { x, y }
-
         if (x < 0) {
             overflowedCoordinate.x = this.roundToNearest(this.canvasElement!.width - this.resolution)
         } else if (x > this.canvasElement!.width) {

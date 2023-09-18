@@ -6,16 +6,21 @@ class Cell {
 
     updated: boolean = false
     alive: boolean = true
+    aliveNeighbours: number = 0
 
-    constructor (x: number, y: number, size: number = 10) {
+    constructor (
+        x: number, 
+        y: number, 
+        alive: boolean
+    ) {
         this.x = x
         this.y = y
-        this.size = size
+        this.alive = alive
     }
 
-    getCoordinateString = (): CellCoordinate => {
-        return `[${this.x}:${this.y}]`
-    }
+    getCoordinateString = (): CellCoordinate => `[${this.x}:${this.y}]`
+
+    setAliveNeighbours = (amount: number) => this.aliveNeighbours = amount 
 }
 
 export default Cell
