@@ -10,16 +10,17 @@ class Conway {
     canvasElement: HTMLCanvasElement|null
     canvasContext: CanvasRenderingContext2D|null
 
-    fps: number = 3
-    resolution: number = 100
+    fps: number
+    resolution: number
 
     currentState: States = States.PAUSED
 
-    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10) {
+    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10, fps: number = 3) {
         this.canvasElement = canvasElement as HTMLCanvasElement
         this.canvasContext = this.canvasElement!.getContext("2d")
 
         this.resolution = cellSize
+        this.fps = fps
 
         this.init()
     }
