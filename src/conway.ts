@@ -5,13 +5,13 @@ export enum States {
     RUNNING
 }
 class Conway {
-    grid: Cell[][] = []
+    private grid: Cell[][] = []
 
-    canvasElement: HTMLCanvasElement|null
-    canvasContext: CanvasRenderingContext2D|null
+    private canvasElement: HTMLCanvasElement|null
+    private canvasContext: CanvasRenderingContext2D|null
 
-    fps: number
-    resolution: number
+    private fps: number
+    private resolution: number
 
     currentState: States = States.PAUSED
 
@@ -25,7 +25,7 @@ class Conway {
         this.init()
     }
 
-    init = () => {
+    private init = () => {
         this.setGameState(States.PAUSED)
 
         window.addEventListener('resize', this.resizeCanvas, false);
@@ -37,25 +37,7 @@ class Conway {
         requestAnimationFrame(this.draw);       
     }
 
-    resizeCanvas = () => {
-        this.canvasElement!.width = this.roundToNearest(window.innerWidth)
-        this.canvasElement!.height = this.roundToNearest(window.innerHeight)
-    }
-
-    getNewGrid = () => {
-        let grid: Cell[][] = [];
-
-        for (let x = 0; x <= this.canvasElement?.width!; x += this.resolution) {
-            grid[x] = []
-            for (let y = 0; y <= this.canvasElement?.height!; y += this.resolution) {     
-                grid[x][y] = new Cell(x, y, false)
-            }
-        }
-
-        return grid
-    }
-
-    draw = () => {
+    private draw = () => {
         this.clear()
 
         this.drawCells()
@@ -75,7 +57,7 @@ class Conway {
     // --
     // TODO version 2: Get areas of living cells and only check around those cells?
     // This should increase loop a lot in many cases
-    update = () => {
+    private update = () => {
         const newGrid = this.getNewGrid()
 
         this.grid.forEach((row, x) => {
@@ -88,7 +70,7 @@ class Conway {
         this.grid = newGrid
     }
 
-    clear = () => {
+    private clear = () => {
         this.canvasContext!.clearRect(
             0,
             0,
@@ -105,7 +87,61 @@ class Conway {
         )
     }
 
-    isCellAlive = (cell: Cell) => {
+    resizeCanvas = () => {
+        this.canvasElement!.width = this.roundToNearest(window.innerWidth)
+        this.canvasElement!.height = this.roundToNearest(window.innerHeight)
+    }
+
+    private getNewGrid = (): Cell[][] => {
+        let grid: Cell[][] = [];
+
+        for (let x = 0; x <= this.canvasElement?.width!; x += this.resolution) {
+            grid[x] = []
+            for (let y = 0; y <= this.canvasElement?.height!; y += this.resolution) {     
+                grid[x][y] = new Cell(x, y, false)
+            }
+        }
+
+        return grid
+    }
+
+    private drawCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => cell.alive && this.drawCell(cell)))
+
+    private drawCell = (cell: Cell) => {
+        this.canvasContext!.fillStyle = "white";
+        this.canvasContext!.fillRect(
+            cell.x,
+            cell.y,
+            this.resolution,
+            this.resolution
+        )
+    }
+
+    private getCellAt = (x: number, y: number): Cell => {
+        return this.grid[x][y]
+    }
+
+    private getOverflowCoordinate = (x: number, y: number): {x: number, y: number} => {
+        const overflowedCoordinate = { x, y }
+
+        if (x < 0) {
+            overflowedCoordinate.x = this.roundToNearest(this.canvasElement!.width - this.resolution)
+        } else if (x > this.canvasElement!.width) {
+            overflowedCoordinate.x = 0
+        }
+
+        if (y < 0) {
+            overflowedCoordinate.y = this.roundToNearest(this.canvasElement!.height - this.resolution)
+        } else if (y > this.canvasElement!.height) {
+            overflowedCoordinate.y = 0
+        }
+
+        return overflowedCoordinate
+    }
+
+    setGameState = (state: States) => this.currentState = state
+
+    isCellAlive = (cell: Cell): boolean => {
         let alive = cell.alive
         cell.aliveNeighbours = this.countAliveNeighboursForCell(cell)
 
@@ -124,20 +160,6 @@ class Conway {
         return alive
     }
 
-    setGameState = (state: States) => this.currentState = state
-
-    drawCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => cell.alive && this.drawCell(cell)))
-
-    drawCell = (cell: Cell) => {
-        this.canvasContext!.fillStyle = "white";
-        this.canvasContext!.fillRect(
-            cell.x,
-            cell.y,
-            this.resolution,
-            this.resolution
-        )
-    }
-
     toggleCellAtCoordinate = (x: number, y: number) => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
@@ -151,13 +173,13 @@ class Conway {
         cell.alive = !cell.alive
     }
 
-    countAliveNeighboursForCell = (cell: Cell) => {
+    countAliveNeighboursForCell = (cell: Cell): number => {
         let aliveNeigbours = 0
         let res = this.resolution
         const { x, y } = cell
 
         // infinite
-        const cellMatrix = [
+        const cellMatrix: {x: number, y: number}[] = [
             // 'top'
             this.getOverflowCoordinate(x - res, y - res),   // left
             this.getOverflowCoordinate(x,       y - res),   // middle
@@ -183,29 +205,8 @@ class Conway {
         return aliveNeigbours
     }
 
-    private getCellAt = (x: number, y: number): Cell => {
-        return this.grid[x][y]
-    }
-
     roundToNearest = (number: number, nearest: number = this.resolution): number=> {
         return Math.floor(number / nearest) * nearest
-    }
-
-    private getOverflowCoordinate = (x: number, y: number) => {
-        const overflowedCoordinate = { x, y }
-        if (x < 0) {
-            overflowedCoordinate.x = this.roundToNearest(this.canvasElement!.width - this.resolution)
-        } else if (x > this.canvasElement!.width) {
-            overflowedCoordinate.x = 0
-        }
-
-        if (y < 0) {
-            overflowedCoordinate.y = this.roundToNearest(this.canvasElement!.height - this.resolution)
-        } else if (y > this.canvasElement!.height) {
-            overflowedCoordinate.y = 0
-        }
-
-        return overflowedCoordinate
     }
 }
 
