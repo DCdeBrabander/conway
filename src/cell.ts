@@ -18,8 +18,6 @@ class Cell {
         this.alive = alive
     }
 
-    getCoordinateString = (): CellCoordinate => `[${this.x}:${this.y}]`
-
     setAliveNeighbours = (amount: number) => this.aliveNeighbours = amount 
 }
 

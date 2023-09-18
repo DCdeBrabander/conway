@@ -1,12 +1,16 @@
 import Conway, { States } from "./conway"
 
+const stateInfoElement = document.getElementById("state")
+
 const CELL_SIZE = 20
 const CONWAY_FPS = 5
 const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
 
 canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-    ConwayInstance.toggleCellAtCoordinate(event.clientX, event.clientY)
+    const correctX = event.clientX - canvasElement.offsetLeft
+    const correctY = event.clientY - canvasElement.offsetTop
+    ConwayInstance.toggleCellAtCoordinate(correctX, correctY)
 }, false);
 
 window.addEventListener('keyup', (event: KeyboardEvent) => {
@@ -27,5 +31,7 @@ window.addEventListener('keyup', (event: KeyboardEvent) => {
             break
     }
 
-    document.title = "Conway - " + Object.keys(States)[Object.values(States).indexOf(ConwayInstance.currentState)]
+    const currentState = Object.keys(States)[Object.values(States).indexOf(ConwayInstance.currentState)]
+    document.title = "Conway's Game of Life - " + currentState
+    stateInfoElement!.innerHTML = currentState
 }, false)

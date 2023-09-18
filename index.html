@@ -2,15 +2,47 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>Conway</title>
+    <title>Conway's Game of Life</title>
     <style>
         * {
             padding: 0;
             margin: 0;
+            box-sizing: border-box;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+        body {
+            background-color: #000;
+        }
+        #conway-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        #info {
+            position: relative;
+            width: 100%;
+            background: #FFF;
+            text-align: center;
+        }
+        #info h1,
+        #info p {
+            width: 100%;
+        }
+        #info h1 span {
+            font-size: 10px;
+        }
+        #info #state {
+            font-style: italic;
+            font-weight: bold;
+            padding: 10px 0;
         }
     </style>
 </head>
 <body>
+    <div id="info">
+        <h1>"Conway's Game Of Life" <span>by DDB</span></h1>
+        <p>P = pause | [space] = toggle resume/pause</p>
+        <div id="state">PAUSED</div>
+    </div>
     <canvas id="conway-canvas"></canvas>
     <script src="./dist/app.js"></script>
 </body>

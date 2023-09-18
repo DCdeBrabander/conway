@@ -1,10 +1,16 @@
-import Cell, { CellCoordinate } from "./cell";
+import Cell, { CellCoordinate } from "./cell"
 
 export enum States {
     PAUSED,
     RUNNING
 }
 class Conway {
+    private theme = {
+        grid: "#AAA",
+        cell: "#FFF",
+        background: "#444"
+    }
+    
     private grid: Cell[][] = []
 
     private canvasElement: HTMLCanvasElement|null
@@ -15,10 +21,14 @@ class Conway {
 
     currentState: States = States.PAUSED
 
-    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10, fps: number = 3) {
-        this.canvasElement = canvasElement as HTMLCanvasElement
-        this.canvasContext = this.canvasElement!.getContext("2d")
+    private heightOffset = document.querySelector('#info')?.clientHeight ?? 0
+    private resizeTimeout: NodeJS.Timeout
 
+    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10, fps: number = 3) {
+        this.canvasElement = canvasElement as HTMLCanvasElement        
+        this.canvasContext = this.canvasElement!.getContext("2d")
+        
+        this.resizeTimeout = setTimeout(() => {})
         this.resolution = cellSize
         this.fps = fps
 
@@ -27,19 +37,20 @@ class Conway {
 
     private init = () => {
         this.setGameState(States.PAUSED)
-
-        window.addEventListener('resize', this.resizeCanvas, false);
-        this.resizeCanvas()
         
+        this.setCanvasSize(window.innerWidth, window.innerHeight)
+        window.addEventListener('resize', this.onResize, false)
+
         // Create all cell instances for every grid coordinate
         this.grid = this.getNewGrid()
 
-        requestAnimationFrame(this.draw);       
+        requestAnimationFrame(this.draw)
     }
 
     private draw = () => {
         this.clear()
 
+        this.drawGrid()
         this.drawCells()
 
         // Only update if running, this allows us to draw :-) 
@@ -49,7 +60,7 @@ class Conway {
         
         setTimeout(() => {
             requestAnimationFrame(this.draw)
-        }, 1000 / this.fps);
+        }, 1000 / this.fps)
     }
 
     // version 1: Loop through grid checking all cells
@@ -71,14 +82,14 @@ class Conway {
     }
 
     private clear = () => {
+        this.canvasContext!.fillStyle = this.theme.background
+
         this.canvasContext!.clearRect(
             0,
             0,
             this.canvasElement!.width,
             this.canvasElement!.height
         )
-
-        this.canvasContext!.fillStyle = "black";
         this.canvasContext!.fillRect(
             0,
             0,
@@ -87,13 +98,28 @@ class Conway {
         )
     }
 
-    resizeCanvas = () => {
-        this.canvasElement!.width = this.roundToNearest(window.innerWidth)
-        this.canvasElement!.height = this.roundToNearest(window.innerHeight)
+    setCanvasSize = (width: number, height: number) => {
+        const fixedWith = this.roundToNearest(width)
+        const fixedHeight = this.roundToNearest(height - this.heightOffset)
+
+        this.canvasElement!.style.width = fixedWith + "px"
+        this.canvasElement!.style.height = fixedHeight + "px"
+
+        this.canvasElement!.width = fixedWith
+        this.canvasElement!.height = fixedHeight
+    }
+
+    private onResize = () => {
+        clearTimeout(this.resizeTimeout)
+        this.resizeTimeout = setTimeout(() => {     
+            this.setCanvasSize(window.innerWidth, window.innerHeight)            
+            this.init()
+            console.info("canvas resized and reinitialized")
+        }, 100)      
     }
 
     private getNewGrid = (): Cell[][] => {
-        let grid: Cell[][] = [];
+        let grid: Cell[][] = []
 
         for (let x = 0; x <= this.canvasElement?.width!; x += this.resolution) {
             grid[x] = []
@@ -105,10 +131,25 @@ class Conway {
         return grid
     }
 
+    private drawGrid = () => {
+        this.canvasContext!.strokeStyle = this.theme.grid
+
+        this.grid.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell, y: number) => {
+                this.canvasContext!.strokeRect(
+                    cell.x,
+                    cell.y,
+                    this.resolution, 
+                    this.resolution, 
+                )
+            })
+        })
+    }
+
     private drawCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => cell.alive && this.drawCell(cell)))
 
     private drawCell = (cell: Cell) => {
-        this.canvasContext!.fillStyle = "white";
+        this.canvasContext!.fillStyle = this.theme.cell
         this.canvasContext!.fillRect(
             cell.x,
             cell.y,
@@ -121,18 +162,20 @@ class Conway {
         return this.grid[x][y]
     }
 
-    private getOverflowCoordinate = (x: number, y: number): {x: number, y: number} => {
+    private overflowPosition = (x: number, y: number): {x: number, y: number} => {
         const overflowedCoordinate = { x, y }
 
-        if (x < 0) {
-            overflowedCoordinate.x = this.roundToNearest(this.canvasElement!.width - this.resolution)
-        } else if (x > this.canvasElement!.width) {
+        const { width, height } = this.canvasElement!
+
+        if (x < 0) {    
+            overflowedCoordinate.x = width - this.resolution
+        } else if (x >= width) {
             overflowedCoordinate.x = 0
         }
 
         if (y < 0) {
-            overflowedCoordinate.y = this.roundToNearest(this.canvasElement!.height - this.resolution)
-        } else if (y > this.canvasElement!.height) {
+            overflowedCoordinate.y = height - this.resolution
+        } else if (y >= height) {
             overflowedCoordinate.y = 0
         }
 
@@ -163,7 +206,6 @@ class Conway {
     toggleCellAtCoordinate = (x: number, y: number) => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
-
         const cell = this.getCellAt(roundedX, roundedY)
 
         if (!this.getCellAt(roundedX, roundedY)) {
@@ -181,19 +223,19 @@ class Conway {
         // infinite
         const cellMatrix: {x: number, y: number}[] = [
             // 'top'
-            this.getOverflowCoordinate(x - res, y - res),   // left
-            this.getOverflowCoordinate(x,       y - res),   // middle
-            this.getOverflowCoordinate(x + res, y - res),   // right
+            this.overflowPosition(x - res, y - res),   // left
+            this.overflowPosition(x,       y - res),   // middle
+            this.overflowPosition(x + res, y - res),   // right
             
             // 'middle'
-            this.getOverflowCoordinate(x - res, y),         // left
+            this.overflowPosition(x - res, y),         // left
             // -- current X / Y 
-            this.getOverflowCoordinate(x + res, y),         // right
+            this.overflowPosition(x + res, y),         // right
         
             // 'bottom'    
-            this.getOverflowCoordinate(x - res, y + res),   // left
-            this.getOverflowCoordinate(x,       y + res),   // middle
-            this.getOverflowCoordinate(x + res, y + res)    // right
+            this.overflowPosition(x - res, y + res),   // left
+            this.overflowPosition(x,       y + res),   // middle
+            this.overflowPosition(x + res, y + res)    // right
         ]
 
         for (const coordinate of cellMatrix) {
@@ -205,7 +247,7 @@ class Conway {
         return aliveNeigbours
     }
 
-    roundToNearest = (number: number, nearest: number = this.resolution): number=> {
+    roundToNearest = (number: number, nearest: number = this.resolution): number => {
         return Math.floor(number / nearest) * nearest
     }
 }
