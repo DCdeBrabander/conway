@@ -4,12 +4,15 @@ import { Patterns } from "./patterns/index"
 const app = () => {
     // UI stuff
     const stateInfoElement = document.querySelector("#state span") as HTMLSpanElement
-    const fpsElement = document.querySelector("#fps span") as HTMLSpanElement
+
+    const fpsElement = document.querySelector("#fps #target span") as HTMLSpanElement
+    const realFpsElement = document.querySelector("#fps #actual span") as HTMLSpanElement
+
     const supportedPatternsElement = document.querySelector("#patterns select") as HTMLSelectElement
     const helpDialogElement = document.getElementById("help") as HTMLDialogElement
 
     // Conway Stuff
-    const CELL_SIZE = 10
+    const CELL_SIZE = 15
     const CONWAY_FPS = 20
     const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 
@@ -40,6 +43,11 @@ const app = () => {
         x: mouseEvent.clientX - canvasElement.offsetLeft,
         y: mouseEvent.clientY - canvasElement.offsetTop
     })
+
+    const realFrameTime = () => { 
+        realFpsElement.innerHTML = Math.floor(1000 / ConwayGame.getRealFrameTime()).toString()
+        setTimeout(realFrameTime, 250)
+    }
     
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
         const { x, y } = getMouseCoordinates(event)
@@ -92,6 +100,8 @@ const app = () => {
         const selectedPattern = Patterns[patternValue] ?? Patterns.CELL
         ConwayGame.setCurrentPreviewPattern(selectedPattern)
     })
+
+    realFrameTime()
 }
 
 document.addEventListener("DOMContentLoaded", () => app())

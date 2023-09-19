@@ -10,6 +10,8 @@ class Conway {
     private MAX_FPS: number = 60
     private MAX_CELL_SIZE: number = 100
 
+    private realFrameTime: number = 0
+
     private theme = {
         grid: "#888",
         cell: {
@@ -81,6 +83,7 @@ class Conway {
     private draw = () => {
         this.clear()
 
+        const startFrameTime = performance.timeOrigin + performance.now()
 
         // Only update if running, this allows us to draw :-) 
         if (this.currentState == States.RUNNING) {
@@ -90,6 +93,8 @@ class Conway {
         this.drawPreviewCells()
         this.drawLivingCells()
         this.drawGrid()
+
+        this.realFrameTime = (performance.timeOrigin + performance.now() - startFrameTime)
 
         setTimeout(() => {
             requestAnimationFrame(this.draw)
@@ -212,6 +217,8 @@ class Conway {
 
         return overflowedCoordinate
     }
+
+    getRealFrameTime = () => this.realFrameTime
 
     getSupportedPatterns = () => Object.keys(Patterns)
 
