@@ -12,7 +12,7 @@ export enum Patterns {
  * Return single or two dimensional array of booleans.
  * Every 'true' in this array represents a cell.
  */
-export const GetPattern = (pattern: Patterns): boolean[][] => {
+export const GetPattern = (pattern: Patterns): number[][] => {
     switch (pattern) {
         case Patterns.CELL: 
             return CellPattern

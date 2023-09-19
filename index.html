@@ -3,47 +3,38 @@
 <head>
     <meta charset="UTF-8" />
     <title>Conway's Game of Life</title>
-    <style>
-        * {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-            font-family: Verdana, Geneva, Tahoma, sans-serif;
-        }
-        body {
-            background-color: #000;
-        }
-        #conway-canvas {
-            width: 100%;
-            height: 100%;
-        }
-        #info {
-            background-color: #BBB;
-            width: 100%;
-            text-align: center;
-        }
-        #info h1,
-        #info p {
-            width: 100%;
-        }
-        #info h1 span {
-            font-size: 10px;
-        }
-        #info #state {
-            font-style: italic;
-            font-weight: bold;
-            padding: 10px 0;
-        }
-    </style>
+    <link href="dist/app.css" rel="stylesheet" />
 </head>
 <body>
-    <div id="info">
-        <h1>"Conway's Game Of Life" <span>by DDB</span></h1>
-        <p>P = pause | [space] = toggle resume/pause</p>
-        <div id="state">PAUSED</div>
-        <select id="patterns"></select>
-    </div>
+    
+    <header id="info">
+        <h1>Conway's Game Of Life <span>by DDB</span></h1>
+        <div id="state">
+            <span>PAUSED</span>
+        </div>
+        <div>
+            Insert
+            <select id="patterns"></select>
+        </div>
+    </header>
+
+    <!-- This is where the magic happens -->
     <canvas id="conway-canvas"></canvas>
+
+    <dialog id="help">
+        <h2>Controls</h2>
+        <table>
+            <tr>
+                <td>[p]</td> <td>Pause</td>
+            </tr>
+            <tr>
+                <td>[space]</td> <td>Toggle State (Resume/Pause)</td>
+            </tr>
+            <tr>
+                <td>[h]</td> <td>Toggle this help dialog</td>
+            </tr>
+        </table>
+    </dialog>
     <script src="./dist/app.js"></script>
 </body>
 </html>

@@ -292,7 +292,7 @@ class Conway {
     }
 
     showPattern = (patternType: Patterns, gridX: number, gridY: number, example: boolean = false) => {
-        const pattern: boolean[][] = GetPattern(patternType)
+        const pattern: number[][] = GetPattern(patternType)
         let grid: Cell[][] = []
 
         if (example) {

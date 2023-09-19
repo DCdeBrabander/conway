@@ -1,7 +1,7 @@
 const BlinkerPattern = [
-    [false, false, false, false, false],
-    [false, true,  true,  true,  false],
-    [false, false, false, false, false],
+    [0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0],
 ]
 
 export default BlinkerPattern

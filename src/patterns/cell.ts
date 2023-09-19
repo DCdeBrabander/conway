@@ -1,2 +1,2 @@
-const CellPattern = [ [ true ] ]
+const CellPattern = [ [ 1 ] ]
 export default CellPattern

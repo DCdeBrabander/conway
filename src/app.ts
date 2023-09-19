@@ -8,6 +8,7 @@ const app = () => {
     const CONWAY_FPS = 5
     const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
     const supportedPatternsElement = document.getElementById("patterns") as HTMLSelectElement
+    const helpDialogElement = document.getElementById("help") as HTMLDialogElement
 
     // Let's go ;-)
     const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
@@ -51,6 +52,13 @@ const app = () => {
         switch (pressedKey) {
             case "p":
                 ConwayInstance.setGameState(States.PAUSED)
+                break
+            case "h":
+                if (!helpDialogElement.open) {
+                    helpDialogElement.showModal()
+                } else {
+                    helpDialogElement.close()
+                }
                 break
             case " ": 
                 ConwayInstance.setGameState(
