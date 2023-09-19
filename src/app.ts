@@ -10,18 +10,15 @@ const app = () => {
 
     // Conway Stuff
     const CELL_SIZE = 10
-    const CONWAY_FPS = 5
+    const CONWAY_FPS = 20
     const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 
     // Let's go ;-)
-    const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
+    const ConwayGame = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
         .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
         .init()
 
-    // TODO: make slider or sumthn'
-    fpsElement.innerHTML = CONWAY_FPS.toString()
-
-    ConwayInstance.getSupportedPatterns().forEach(
+    ConwayGame.getSupportedPatterns().forEach(
         (supportedPattern, index) => {
             
         const textValue = 
@@ -37,6 +34,8 @@ const app = () => {
         )
     })
 
+    // All eventlisteners could be put within instance of Conway,
+    // but pure game-of-life has no controls or any events
     const getMouseCoordinates = (mouseEvent: MouseEvent) => ({
         x: mouseEvent.clientX - canvasElement.offsetLeft,
         y: mouseEvent.clientY - canvasElement.offsetTop
@@ -44,12 +43,12 @@ const app = () => {
     
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
         const { x, y } = getMouseCoordinates(event)
-        ConwayInstance.showPattern(ConwayInstance.getCurrentPreviewPattern(), x, y)
+        ConwayGame.showPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
     
     canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
         const { x, y } = getMouseCoordinates(event)
-        ConwayInstance.showPatternPreview(ConwayInstance.getCurrentPreviewPattern(), x, y)
+        ConwayGame.showPatternPreview(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
     
     window.addEventListener('keyup', (event: KeyboardEvent) => {
@@ -57,7 +56,7 @@ const app = () => {
     
         switch (pressedKey) {
             case "p":
-                ConwayInstance.setGameState(States.PAUSED)
+                ConwayGame.setGameState(States.PAUSED)
                 break
             case "h":
                 if (!helpDialogElement.open) {
@@ -67,8 +66,8 @@ const app = () => {
                 }
                 break
             case " ": 
-                ConwayInstance.setGameState(
-                    ConwayInstance.currentState == States.RUNNING 
+                ConwayGame.setGameState(
+                    ConwayGame.currentState == States.RUNNING 
                     ? States.PAUSED
                     : States.RUNNING
                 )
@@ -76,8 +75,14 @@ const app = () => {
             default:
                 break
         }
+
+        if (ConwayGame.currentState == States.RUNNING) {
+            fpsElement.innerHTML = ConwayGame.fps.toString()
+        } else {
+            fpsElement.innerHTML = "0"
+        }
     
-        const currentState = Object.keys(States)[Object.values(States).indexOf(ConwayInstance.currentState)]
+        const currentState = Object.keys(States)[Object.values(States).indexOf(ConwayGame.currentState)]
         document.title = "Conway's Game of Life - " + currentState
         stateInfoElement!.innerHTML = currentState
     }, false)
@@ -85,7 +90,7 @@ const app = () => {
     supportedPatternsElement.addEventListener('change', () => {
         const patternValue = supportedPatternsElement.value as keyof typeof Patterns
         const selectedPattern = Patterns[patternValue] ?? Patterns.CELL
-        ConwayInstance.setCurrentPreviewPattern(selectedPattern)
+        ConwayGame.setCurrentPreviewPattern(selectedPattern)
     })
 }
 

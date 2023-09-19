@@ -6,6 +6,10 @@ export enum States {
     RUNNING
 }
 class Conway {
+    // Let's keep things under control
+    private MAX_FPS: number = 60
+    private MAX_CELL_SIZE: number = 100
+
     private theme = {
         grid: "#888",
         cell: {
@@ -21,22 +25,41 @@ class Conway {
     private canvasElement: HTMLCanvasElement|null
     private canvasContext: CanvasRenderingContext2D|null
 
-    private fps: number
-    private resolution: number
-
     public currentState: States = States.PAUSED
     private currentPreviewPattern: Patterns = Patterns.CELL
 
-    private heightOffset = 0
+    private heightOffset: number = 0
     private resizeTimeout: NodeJS.Timeout
 
-    constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10, fps: number = 3) {
+    public get fps(): number {
+        return this._fps
+    }
+    public set fps(value: number) {
+        if (value > this.MAX_FPS) {
+            console.info("Maximum FPS reached: " + this.MAX_FPS)
+            this._fps = this.MAX_FPS
+        } else {
+            this._fps = value
+        }
+    }
+
+    public get cellSize(): number {
+        return this._cellSize
+    }
+    public set cellSize(value: number) {
+        if (value > this.MAX_CELL_SIZE) {
+            console.info("Maximum Cell Size reached: " + this.MAX_CELL_SIZE)
+            this._cellSize = this.MAX_CELL_SIZE
+        } else {
+            this._cellSize = value
+        }
+    }
+
+    constructor (canvasElement: HTMLCanvasElement, private _cellSize: number = 10, private _fps: number = 10) {
         this.canvasElement = canvasElement as HTMLCanvasElement        
         this.canvasContext = this.canvasElement!.getContext("2d")
         
         this.resizeTimeout = setTimeout(() => {})
-        this.resolution = cellSize
-        this.fps = fps
 
         return this
     }
@@ -120,9 +143,9 @@ class Conway {
     private getNewGrid = (): Cell[][] => {
         let grid: Cell[][] = []
 
-        for (let x = 0; x <= this.canvasElement?.width!; x += this.resolution) {
+        for (let x = 0; x <= this.canvasElement?.width!; x += this.cellSize) {
             grid[x] = []
-            for (let y = 0; y <= this.canvasElement?.height!; y += this.resolution) {     
+            for (let y = 0; y <= this.canvasElement?.height!; y += this.cellSize) {     
                 grid[x][y] = new Cell(x, y, false)
             }
         }
@@ -138,8 +161,8 @@ class Conway {
                 this.canvasContext!.strokeRect(
                     cell.x,
                     cell.y,
-                    this.resolution, 
-                    this.resolution, 
+                    this.cellSize, 
+                    this.cellSize, 
                 )
             })
         })
@@ -161,8 +184,8 @@ class Conway {
         this.canvasContext!.fillRect(
             cell.x,
             cell.y,
-            this.resolution,
-            this.resolution
+            this.cellSize,
+            this.cellSize
         )
     }
 
@@ -176,13 +199,13 @@ class Conway {
         const { width, height } = this.canvasElement!
 
         if (x < 0) {    
-            overflowedCoordinate.x = width - this.resolution
+            overflowedCoordinate.x = width - this.cellSize
         } else if (x >= width) {
             overflowedCoordinate.x = 0
         }
 
         if (y < 0) {
-            overflowedCoordinate.y = height - this.resolution
+            overflowedCoordinate.y = height - this.cellSize
         } else if (y >= height) {
             overflowedCoordinate.y = 0
         }
@@ -257,7 +280,7 @@ class Conway {
 
     countAliveNeighboursForCell = (cell: Cell): number => {
         let aliveNeigbours = 0
-        let res = this.resolution
+        let res = this.cellSize
         const { x, y } = cell
 
         // infinite
@@ -287,11 +310,11 @@ class Conway {
         return aliveNeigbours
     }
 
-    roundToNearest = (number: number, nearest: number = this.resolution): number => {
+    roundToNearest = (number: number, nearest: number = this.cellSize): number => {
         return Math.floor(number / nearest) * nearest
     }
 
-    showPattern = (patternType: Patterns, gridX: number, gridY: number, example: boolean = false) => {
+    showPattern = (patternType: Patterns, currentGridX: number, currentGridY: number, example: boolean = false) => {
         const pattern: number[][] = GetPattern(patternType)
         let grid: Cell[][] = []
 
@@ -302,10 +325,18 @@ class Conway {
             grid = this.grid
         }
 
-        pattern.forEach((row, previewX) => {
-            row.forEach((showCell, previewY) => {
-                const x = this.roundToNearest((previewX * this.resolution) + gridX)
-                const y = this.roundToNearest((previewY * this.resolution) + gridY)
+        // Because aesthetic reasons:
+        // We need to calculate offset of pattern so we can center the pattern under mouse.
+        // we select first row to check max X-length ASSUMING all rows have equal length.
+        const offsetX = Math.floor(pattern[0].length / 2)
+        const offsetY = Math.floor(pattern.length / 2)
+
+        // Every row index == Y
+        // Every value per row == X
+        pattern.forEach((row, previewY) => {
+            row.forEach((showCell, previewX) => {
+                const x = this.roundToNearest(((previewX - offsetX) * this.cellSize) + currentGridX)
+                const y = this.roundToNearest(((previewY - offsetY) * this.cellSize) + currentGridY) 
 
                 if (typeof grid[x][y] === "undefined" || ! grid[x][y]) {
                     return
@@ -322,8 +353,8 @@ class Conway {
         })
     }
 
-    showPatternPreview = (patternType: Patterns, gridX: number, gridY: number) => {
-        this.showPattern(patternType, gridX, gridY, true)
+    showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => {
+        this.showPattern(patternType, currentGridX, currentGridY, true)
     }
 }
 
