@@ -1,5 +1,5 @@
 # Conway's Game Of Life
-![Drag Racing](./dist/v1.png)
+![Drag Racing](./dist/v2.png)
 [Wiki: Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
 
 ## Setup 
@@ -17,8 +17,8 @@ or open/serve index.html however you want
    1. Select pattern-presets to insert onto grid
    2. Preview what to insert onto grid
 4. 'Infinite' grid (it loops back around the edges)
-5. Dynamic resizing and cell-scaling (WiP)
-
+5. (WiP) Dynamic resizing and cell-scaling 
+6. (TODO) Gameplay (0)_(0)
 
 
 ## But why? 

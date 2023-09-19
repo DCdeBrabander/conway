@@ -7,12 +7,12 @@ export enum States {
 }
 class Conway {
     private theme = {
-        grid: "#AAA",
+        grid: "#888",
         cell: {
             alive: "#FFF",
             example: "#AAA",
         },
-        background: "#444"
+        background: "#222"
     }
     
     private grid: Cell[][] = []

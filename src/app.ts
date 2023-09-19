@@ -2,14 +2,16 @@ import Conway, { States } from "./conway"
 import { Patterns } from "./patterns/index"
 
 const app = () => {
+    // UI stuff
     const stateInfoElement = document.querySelector("#state span") as HTMLSpanElement
     const fpsElement = document.querySelector("#fps span") as HTMLSpanElement
+    const supportedPatternsElement = document.querySelector("#patterns select") as HTMLSelectElement
+    const helpDialogElement = document.getElementById("help") as HTMLDialogElement
 
-    const CELL_SIZE = 20
+    // Conway Stuff
+    const CELL_SIZE = 10
     const CONWAY_FPS = 5
     const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
-    const supportedPatternsElement = document.getElementById("patterns") as HTMLSelectElement
-    const helpDialogElement = document.getElementById("help") as HTMLDialogElement
 
     // Let's go ;-)
     const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
