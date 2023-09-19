@@ -51,6 +51,8 @@ class Conway {
         this.grid = this.getNewGrid()
 
         requestAnimationFrame(this.draw)
+
+        return this
     }
 
     private draw = () => {

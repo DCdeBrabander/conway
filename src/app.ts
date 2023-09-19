@@ -9,7 +9,10 @@ const app = () => {
     const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
     const supportedPatternsElement = document.getElementById("patterns") as HTMLSelectElement
 
+    // Let's go ;-)
     const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
+        .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
+        .init()
 
     ConwayInstance.getSupportedPatterns().forEach(
         (supportedPattern, index) => {
@@ -35,7 +38,7 @@ const app = () => {
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
         const { x, y } = getMouseCoordinates(event)
         ConwayInstance.showPattern(ConwayInstance.getCurrentPreviewPattern(), x, y)
-    }, false);
+    }, false)
     
     canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
         const { x, y } = getMouseCoordinates(event)
@@ -69,12 +72,7 @@ const app = () => {
         const patternValue = supportedPatternsElement.value as keyof typeof Patterns
         const selectedPattern = Patterns[patternValue] ?? Patterns.CELL
         ConwayInstance.setCurrentPreviewPattern(selectedPattern)
-    })    
-
-    // Let's go ;-)
-    ConwayInstance
-        .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
-        .init()
+    })
 }
 
 document.addEventListener("DOMContentLoaded", () => app())
