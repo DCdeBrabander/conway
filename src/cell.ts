@@ -1,4 +1,3 @@
-export type CellCoordinate = `[${number}:${number}]`
 class Cell {
     x: number = 0
     y: number = 0

@@ -1,4 +1,5 @@
 import Conway, { States } from "./conway"
+import { Patterns } from "./patterns/index"
 
 const stateInfoElement = document.getElementById("state")
 
@@ -7,11 +8,25 @@ const CONWAY_FPS = 5
 const canvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
 
+// TODO: Make this editable by user
+const currentPreviewPattern = Patterns.BLINKER
+
+const getMouseCoordinates = (mouseEvent: MouseEvent) => {
+    return {
+        x: mouseEvent.clientX - canvasElement.offsetLeft,
+        y: mouseEvent.clientY - canvasElement.offsetTop
+    }
+}
+
 canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-    const correctX = event.clientX - canvasElement.offsetLeft
-    const correctY = event.clientY - canvasElement.offsetTop
-    ConwayInstance.toggleCellAtCoordinate(correctX, correctY)
+    const { x, y } = getMouseCoordinates(event)
+    ConwayInstance.insertPattern(currentPreviewPattern, x, y)
 }, false);
+
+canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
+    const { x, y } = getMouseCoordinates(event)
+    ConwayInstance.showPatternPreview(currentPreviewPattern, x, y)
+}, false)
 
 window.addEventListener('keyup', (event: KeyboardEvent) => {
     const pressedKey = event.key.toLowerCase()
@@ -34,11 +49,4 @@ window.addEventListener('keyup', (event: KeyboardEvent) => {
     const currentState = Object.keys(States)[Object.values(States).indexOf(ConwayInstance.currentState)]
     document.title = "Conway's Game of Life - " + currentState
     stateInfoElement!.innerHTML = currentState
-}, false)
-
-canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
-    ConwayInstance.showPreviewCell(
-        event.clientX - canvasElement.offsetLeft,
-        event.clientY - canvasElement.offsetTop
-    )
 }, false)

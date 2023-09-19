@@ -1,4 +1,5 @@
-import Cell, { CellCoordinate } from "./cell"
+import Cell from "./cell"
+import { GetPattern, Patterns } from "./patterns/index"
 
 export enum States {
     PAUSED,
@@ -60,7 +61,7 @@ class Conway {
             this.update()
         }
 
-        this.drawPreviewCells()  
+        this.drawPreviewCells()
         this.drawLivingCells()
         this.drawGrid()
 
@@ -149,6 +150,7 @@ class Conway {
         if (cell.alive) {
             this.canvasContext!.fillStyle = this.theme.cell.alive
         } else if (cell.example) {
+            console.log('drawing example cell')
             this.canvasContext!.fillStyle = this.theme.cell.example
         } else {
             return
@@ -184,12 +186,6 @@ class Conway {
         }
 
         return overflowedCoordinate
-    }
-
-    showPreviewCell = (x: number, y: number) => {
-        this.previewCells = this.getNewGrid()
-        const cell = this.previewCells[this.roundToNearest(x)][this.roundToNearest(y)]
-        cell.example = true
     }
 
     setCanvasSize = (width: number, height: number): void => {
@@ -270,6 +266,62 @@ class Conway {
 
     roundToNearest = (number: number, nearest: number = this.resolution): number => {
         return Math.floor(number / nearest) * nearest
+    }
+
+    // TODO refactor to show(Preview)Pattern(new Cell) (?)
+    showPreviewCell = (x: number, y: number) => {
+        this.previewCells = this.getNewGrid()
+        const cell = this.previewCells[this.roundToNearest(x)][this.roundToNearest(y)]
+        cell.example = true
+    }
+
+    insertPattern = (patternType: Patterns, gridX: number, gridY: number) => {
+        const pattern: boolean[][] = GetPattern(patternType)
+
+        pattern.forEach((row, previewX) => {
+            row.forEach((showCell, previewY) => {
+                const x = this.roundToNearest((previewX * this.resolution) + gridX)
+                const y = this.roundToNearest((previewY * this.resolution) + gridY)
+
+                if (typeof (this.previewCells[x][y] ?? undefined) === "undefined") {
+                    console.log('cant update cell at x,y?', x, y)
+                    return
+                }
+                
+                if (!showCell) {
+                    return
+                }
+
+                const cell = new Cell(x, y, true)
+                cell.example = true
+                this.grid[x][y] = cell
+            })
+        });
+    }
+
+    showPatternPreview = (patternType: Patterns, gridX: number, gridY: number) => {
+        this.previewCells = this.getNewGrid()
+        const pattern: boolean[][] = GetPattern(patternType)
+
+        pattern.forEach((row, previewX) => {
+            row.forEach((showCell, previewY) => {
+                const x = this.roundToNearest((previewX * this.resolution) + gridX)
+                const y = this.roundToNearest((previewY * this.resolution) + gridY)
+
+                if (typeof (this.previewCells[x][y] ?? undefined) === "undefined") {
+                    console.log('cant update cell at x,y?', x, y)
+                    return
+                }
+                
+                if (!showCell) {
+                    return
+                }
+
+                const cell = new Cell(x, y, false)
+                cell.example = true
+                this.previewCells[x][y] = cell
+            })
+        });
     }
 }
 
