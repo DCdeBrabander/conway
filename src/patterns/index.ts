@@ -1,9 +1,11 @@
 import BlinkerPattern from "./blinker"
 import CellPattern from "./cell"
+import GliderPattern from "./glider"
 
-export const enum Patterns {
-    CELL,
-    BLINKER,
+export enum Patterns {
+    CELL = "Cell",
+    BLINKER = "Blinker",
+    GLIDER = "Glider"
 }
 
 /**
@@ -16,6 +18,8 @@ export const GetPattern = (pattern: Patterns): boolean[][] => {
             return CellPattern
         case Patterns.BLINKER: 
             return BlinkerPattern
+        case Patterns.GLIDER:
+            return GliderPattern
         default:
             return []
     }

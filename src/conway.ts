@@ -25,8 +25,9 @@ class Conway {
     private resolution: number
 
     public currentState: States = States.PAUSED
+    private currentPreviewPattern: Patterns = Patterns.CELL
 
-    private heightOffset = document.querySelector('#info')?.clientHeight ?? 0
+    private heightOffset = 0
     private resizeTimeout: NodeJS.Timeout
 
     constructor (canvasElement: HTMLCanvasElement, cellSize: number = 10, fps: number = 3) {
@@ -37,10 +38,10 @@ class Conway {
         this.resolution = cellSize
         this.fps = fps
 
-        this.init()
+        return this
     }
 
-    private init = () => {
+    init = () => {
         this.setGameState(States.PAUSED)
         
         this.setCanvasSize(window.innerWidth, window.innerHeight)
@@ -81,7 +82,7 @@ class Conway {
         this.grid.forEach((row, x) => {
             row.forEach((cell, y) => {
                 cell.setAliveNeighbours(this.countAliveNeighboursForCell(cell))
-                newGrid[x][y].alive = this.isCellAlive(cell)
+                newGrid[x][y].alive = this.isCellStillAlive(cell)
             }) 
         })
 
@@ -150,7 +151,6 @@ class Conway {
         if (cell.alive) {
             this.canvasContext!.fillStyle = this.theme.cell.alive
         } else if (cell.example) {
-            console.log('drawing example cell')
             this.canvasContext!.fillStyle = this.theme.cell.example
         } else {
             return
@@ -188,7 +188,21 @@ class Conway {
         return overflowedCoordinate
     }
 
-    setCanvasSize = (width: number, height: number): void => {
+    getSupportedPatterns = () => Object.keys(Patterns)
+
+    getCurrentPreviewPattern = (): Patterns => this.currentPreviewPattern
+
+    setCurrentPreviewPattern = (pattern: Patterns): this => {
+        this.currentPreviewPattern = pattern
+        return this
+    }
+
+    setHeightOffset = (offset: number): this => {
+        this.heightOffset = offset
+        return this
+    }
+
+    setCanvasSize = (width: number, height: number): this => {
         const fixedWith = this.roundToNearest(width)
         const fixedHeight = this.roundToNearest(height - this.heightOffset)
 
@@ -197,11 +211,16 @@ class Conway {
 
         this.canvasElement!.width = fixedWith
         this.canvasElement!.height = fixedHeight
+
+        return this
     }
 
-    setGameState = (state: States) => this.currentState = state
+    setGameState = (state: States): this => { 
+        this.currentState = state
+        return this
+    }
 
-    isCellAlive = (cell: Cell): boolean => {
+    isCellStillAlive = (cell: Cell): boolean => {
         let alive = cell.alive
         cell.aliveNeighbours = this.countAliveNeighboursForCell(cell)
 
@@ -220,16 +239,18 @@ class Conway {
         return alive
     }
 
-    toggleCellAtCoordinate = (x: number, y: number): void => {
+    // TODO: currently unused
+    toggleCellAtCoordinate = (x: number, y: number): this => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
         const cell = this.getCellAt(roundedX, roundedY)
 
         if (!this.getCellAt(roundedX, roundedY)) {
-            return
+            return this
         }
 
         cell.alive = !cell.alive
+        return this
     }
 
     countAliveNeighboursForCell = (cell: Cell): number => {
@@ -268,23 +289,23 @@ class Conway {
         return Math.floor(number / nearest) * nearest
     }
 
-    // TODO refactor to show(Preview)Pattern(new Cell) (?)
-    showPreviewCell = (x: number, y: number) => {
-        this.previewCells = this.getNewGrid()
-        const cell = this.previewCells[this.roundToNearest(x)][this.roundToNearest(y)]
-        cell.example = true
-    }
-
-    insertPattern = (patternType: Patterns, gridX: number, gridY: number) => {
+    showPattern = (patternType: Patterns, gridX: number, gridY: number, example: boolean = false) => {
         const pattern: boolean[][] = GetPattern(patternType)
+        let grid: Cell[][] = []
+
+        if (example) {
+            this.previewCells = this.getNewGrid()
+            grid = this.previewCells
+        } else {
+            grid = this.grid
+        }
 
         pattern.forEach((row, previewX) => {
             row.forEach((showCell, previewY) => {
                 const x = this.roundToNearest((previewX * this.resolution) + gridX)
                 const y = this.roundToNearest((previewY * this.resolution) + gridY)
 
-                if (typeof (this.previewCells[x][y] ?? undefined) === "undefined") {
-                    console.log('cant update cell at x,y?', x, y)
+                if (typeof grid[x][y] === "undefined" || ! grid[x][y]) {
                     return
                 }
                 
@@ -292,36 +313,15 @@ class Conway {
                     return
                 }
 
-                const cell = new Cell(x, y, true)
-                cell.example = true
-                this.grid[x][y] = cell
+                const cell = new Cell(x, y, !example)
+                cell.example = example
+                grid[x][y] = cell
             })
-        });
+        })
     }
 
     showPatternPreview = (patternType: Patterns, gridX: number, gridY: number) => {
-        this.previewCells = this.getNewGrid()
-        const pattern: boolean[][] = GetPattern(patternType)
-
-        pattern.forEach((row, previewX) => {
-            row.forEach((showCell, previewY) => {
-                const x = this.roundToNearest((previewX * this.resolution) + gridX)
-                const y = this.roundToNearest((previewY * this.resolution) + gridY)
-
-                if (typeof (this.previewCells[x][y] ?? undefined) === "undefined") {
-                    console.log('cant update cell at x,y?', x, y)
-                    return
-                }
-                
-                if (!showCell) {
-                    return
-                }
-
-                const cell = new Cell(x, y, false)
-                cell.example = true
-                this.previewCells[x][y] = cell
-            })
-        });
+        this.showPattern(patternType, gridX, gridY, true)
     }
 }
 
