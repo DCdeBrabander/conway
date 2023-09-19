@@ -2,7 +2,8 @@ import Conway, { States } from "./conway"
 import { Patterns } from "./patterns/index"
 
 const app = () => {
-    const stateInfoElement = document.getElementById("state")
+    const stateInfoElement = document.querySelector("#state span") as HTMLSpanElement
+    const fpsElement = document.querySelector("#fps span") as HTMLSpanElement
 
     const CELL_SIZE = 20
     const CONWAY_FPS = 5
@@ -14,6 +15,9 @@ const app = () => {
     const ConwayInstance = new Conway(canvasElement, CELL_SIZE, CONWAY_FPS)
         .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
         .init()
+
+    // TODO: make slider or sumthn'
+    fpsElement.innerHTML = CONWAY_FPS.toString()
 
     ConwayInstance.getSupportedPatterns().forEach(
         (supportedPattern, index) => {
