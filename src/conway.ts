@@ -82,7 +82,7 @@ class Conway {
         return this
     }
 
-    init = () => {
+    public init = () => {
         this.setGameState(States.PAUSED)
         this.setCanvasSize(window.innerWidth, window.innerHeight)
         window.addEventListener('resize', this._onResize, false)
@@ -141,22 +141,6 @@ class Conway {
         this._drawPreviewCells()
         this._drawLivingCells()
         this._drawGrid()
-    }
-
-    // version 1: Loop through whole grid and check all cells
-    // Mark each cell as dead or alive so we can update state and draw accordingly
-    // TODO: remove if new update() is stable
-    private fullUpdate = () => {
-        const newGrid = this._getNewGrid()
-
-        this.grid.forEach((column, x) => {
-            column.forEach((cell, y) => {
-                cell.setAliveNeighbours(this.countAliveNeighboursForCell(cell))
-                newGrid[x][y].alive = this.isCellStillAlive(cell)
-            }) 
-        })
-
-        this.grid = newGrid
     }
 
     /**
@@ -264,25 +248,33 @@ class Conway {
 
     private _findRelevantCellsForUpdate = (): Cell[][] => {
         const relevantCells: Cell[][] = []
+        const { width, height } = this.canvasElement
 
-        this.grid.forEach((column, x_index) => {
-            column.forEach((cell, y_index) => {
-                if (cell.alive) {
-                    // All cells around cell
-                    for (const coordinate of this.getAllCellNeighbourCoordinates(cell)) {
-                        if (!relevantCells[coordinate.x]) {
-                            relevantCells[coordinate.x] = []
-                        }
-                        if (!relevantCells[coordinate.x][coordinate.y]) {
-                            relevantCells[coordinate.x][coordinate.y] = this._getCellAt(coordinate.x, coordinate.y)
-                        }
-                    }
-
-                    // Current cell itself
-                    relevantCells[x_index][y_index] = cell                   
+        // Instead of looping through grid we just iterate 'manually' in grid steps
+        // This should result in exact same behaviour as looping through (this.)grid
+        // but more performant
+        // TODO: consider for-looping through this.grid directly
+        for (let x = 0; x <= width; x += this.cellSize) {
+            for (let y = 0; y <= height; y += this.cellSize) {
+                if (!this.grid[x][y].alive) {
+                    continue
                 }
-            })
-        })
+
+                // All cells around cell
+                for (const coordinate of this.getAllCellNeighbourCoordinates(this.grid[x][y])) {
+                    if (!relevantCells[coordinate.x]) {
+                        relevantCells[coordinate.x] = []
+                    }
+                    if (!relevantCells[coordinate.x][coordinate.y]) {
+                        relevantCells[coordinate.x][coordinate.y] = this._getCellAt(coordinate.x, coordinate.y)
+                    }
+                }
+
+                // Current cell itself
+                relevantCells[x][y] = this.grid[x][y]                   
+            }
+        }
+
         return relevantCells
     }
 
