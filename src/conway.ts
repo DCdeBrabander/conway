@@ -83,7 +83,7 @@ class Conway {
         window.addEventListener('resize', this.onResize, false)
 
         // Create all cell instances for every grid coordinate
-        this.grid = this.getNewGrid()
+        this.grid = this._getNewGrid()
 
         this.gameLoop()
 
@@ -133,9 +133,6 @@ class Conway {
         this.draw()
     }
 
-    /**
-     * All Drawing in canvas is done here
-     */
     private draw = () => {
         this._clear()
         this._drawPreviewCells()
@@ -149,7 +146,7 @@ class Conway {
     // TODO version 2: Get areas of living cells and only check around those cells?
     // This should increase loop a lot in many cases
     private update = () => {
-        const newGrid = this.getNewGrid()
+        const newGrid = this._getNewGrid()
 
         this.grid.forEach((row, x) => {
             row.forEach((cell, y) => {
@@ -222,7 +219,6 @@ class Conway {
         )
     }
 
-
     private onResize = () => {
         clearTimeout(this.resizeTimeout)
         this.resizeTimeout = setTimeout(() => {     
@@ -232,7 +228,7 @@ class Conway {
         }, 100)      
     }
 
-    private getNewGrid = (): Cell[][] => {
+    private _getNewGrid = (): Cell[][] => {
         let grid: Cell[][] = []
 
         for (let x = 0; x <= this.canvasElement?.width!; x += this.cellSize) {
@@ -245,11 +241,11 @@ class Conway {
         return grid
     }
 
-    private getCellAt = (x: number, y: number): Cell => {
+    private _getCellAt = (x: number, y: number): Cell => {
         return this.grid[x][y]
     }
 
-    private overflowPosition = (x: number, y: number): { x: number, y: number } => {
+    private _overflowPosition = (x: number, y: number): { x: number, y: number } => {
         const overflowedCoordinate = { x, y }
 
         const { width, height } = this.canvasElement!
@@ -326,9 +322,9 @@ class Conway {
     toggleCellAtCoordinate = (x: number, y: number): this => {
         const roundedX = this.roundToNearest(x)
         const roundedY = this.roundToNearest(y)
-        const cell = this.getCellAt(roundedX, roundedY)
+        const cell = this._getCellAt(roundedX, roundedY)
 
-        if (!this.getCellAt(roundedX, roundedY)) {
+        if (!this._getCellAt(roundedX, roundedY)) {
             return this
         }
 
@@ -344,23 +340,23 @@ class Conway {
         // infinite
         const cellMatrix: {x: number, y: number}[] = [
             // 'top'
-            this.overflowPosition(x - res, y - res),   // left
-            this.overflowPosition(x,       y - res),   // middle
-            this.overflowPosition(x + res, y - res),   // right
+            this._overflowPosition(x - res, y - res),   // left
+            this._overflowPosition(x,       y - res),   // middle
+            this._overflowPosition(x + res, y - res),   // right
             
             // 'middle'
-            this.overflowPosition(x - res, y),         // left
+            this._overflowPosition(x - res, y),         // left
             // -- current X / Y 
-            this.overflowPosition(x + res, y),         // right
+            this._overflowPosition(x + res, y),         // right
         
             // 'bottom'    
-            this.overflowPosition(x - res, y + res),   // left
-            this.overflowPosition(x,       y + res),   // middle
-            this.overflowPosition(x + res, y + res)    // right
+            this._overflowPosition(x - res, y + res),   // left
+            this._overflowPosition(x,       y + res),   // middle
+            this._overflowPosition(x + res, y + res)    // right
         ]
 
         for (const coordinate of cellMatrix) {
-            if (this.getCellAt(coordinate.x, coordinate.y).alive) {
+            if (this._getCellAt(coordinate.x, coordinate.y).alive) {
                 aliveNeigbours++
             }
         }
@@ -377,7 +373,7 @@ class Conway {
         let grid: Cell[][] = []
 
         if (example) {
-            this.previewCells = this.getNewGrid()
+            this.previewCells = this._getNewGrid()
             grid = this.previewCells
         } else {
             grid = this.grid
@@ -411,9 +407,10 @@ class Conway {
         })
     }
 
-    showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => {
+    showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
         this.showPattern(patternType, currentGridX, currentGridY, true)
-    }
+
+    resetPatternPreview = () => this.previewCells = this._getNewGrid() 
 }
 
 export default Conway

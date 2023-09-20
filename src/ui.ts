@@ -70,6 +70,10 @@ const initializeMouseListener = () => {
         const { x, y } = getCorrectedMouseCoordinates(event, ConwayGame.canvasElement)
         ConwayGame.showPatternPreview(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
+
+    ConwayGame.canvasElement.addEventListener('mouseleave', (event: MouseEvent) => {
+        ConwayGame.resetPatternPreview()
+    }, false)
 }
 
 const initializeKeyboardListener = () => {
