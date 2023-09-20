@@ -3,7 +3,8 @@ import { GetPattern, Patterns } from "./patterns/index"
 
 export enum States {
     PAUSED,
-    RUNNING
+    RUNNING,
+    SINGLE_TICK,
 }
 class Conway {
     // Let's keep things under control
@@ -11,6 +12,7 @@ class Conway {
     private MAX_CELL_SIZE: number = 100
 
     private realFrameTime: number = 0
+    private _allowTick: boolean = true
 
     private theme = {
         grid: "#888",
@@ -24,8 +26,7 @@ class Conway {
     private grid: Cell[][] = []
     private previewCells: Cell[][] = []
  
-    private canvasElement: HTMLCanvasElement|null
-    private canvasContext: CanvasRenderingContext2D|null
+    private canvasContext: CanvasRenderingContext2D
 
     public currentState: States = States.PAUSED
     private currentPreviewPattern: Patterns = Patterns.CELL
@@ -57,12 +58,21 @@ class Conway {
         }
     }
 
-    constructor (canvasElement: HTMLCanvasElement, private _cellSize: number = 10, private _fps: number = 10) {
-        this.canvasElement = canvasElement as HTMLCanvasElement        
-        this.canvasContext = this.canvasElement!.getContext("2d")
-        
-        this.resizeTimeout = setTimeout(() => {})
+    public get allowTick(): boolean {
+        return this._allowTick
+    }
+    public set allowTick(value: boolean) {
+        this._allowTick = value
+    }
 
+    constructor (
+        public canvasElement: HTMLCanvasElement, 
+        private _cellSize: number = 10, 
+        private _fps: number = 10
+    ) {
+        this.canvasElement = canvasElement as HTMLCanvasElement        
+        this.canvasContext = this.canvasElement.getContext("2d")!
+        this.resizeTimeout = setTimeout(() => {})
         return this
     }
 
@@ -75,30 +85,62 @@ class Conway {
         // Create all cell instances for every grid coordinate
         this.grid = this.getNewGrid()
 
-        requestAnimationFrame(this.draw)
+        this.gameLoop()
 
         return this
     }
 
-    private draw = () => {
-        this.clear()
-
+    private gameLoop = () => {
         const startFrameTime = performance.timeOrigin + performance.now()
 
-        // Only update if running, this allows us to draw :-) 
-        if (this.currentState == States.RUNNING) {
-            this.update()
+        // Only update if running
+        switch (this.currentState) {
+            case States.RUNNING: 
+                this.run()
+                break
+            case States.PAUSED:
+                this.paused()
+                break;
+            case States.SINGLE_TICK:
+                this.tick()
+                break
         }
 
-        this.drawPreviewCells()
-        this.drawLivingCells()
-        this.drawGrid()
-
-        this.realFrameTime = (performance.timeOrigin + performance.now() - startFrameTime)
+        this.realFrameTime = (performance.timeOrigin + performance.now() - startFrameTime)  
 
         setTimeout(() => {
-            requestAnimationFrame(this.draw)
+            requestAnimationFrame(this.gameLoop)
         }, 1000 / this.fps)
+    }
+    
+    private tick = () => {
+        this.draw()
+
+        if (!this._allowTick) {
+            return
+        }
+        
+        this.run()
+        this._allowTick = false
+    }
+    
+    private paused = () => {
+        this.draw()
+    }
+   
+    private run = () => {
+        this.update()
+        this.draw()
+    }
+
+    /**
+     * All Drawing in canvas is done here
+     */
+    private draw = () => {
+        this._clear()
+        this._drawPreviewCells()
+        this._drawLivingCells()
+        this._drawGrid()
     }
 
     // version 1: Loop through grid checking all cells
@@ -119,7 +161,7 @@ class Conway {
         this.grid = newGrid
     }
 
-    private clear = () => {
+    private _clear = () => {
         this.canvasContext!.fillStyle = this.theme.background
 
         this.canvasContext!.clearRect(
@@ -135,6 +177,51 @@ class Conway {
             this.canvasElement!.height
         )
     }
+
+    private _drawGrid = () => {
+        this.canvasContext!.strokeStyle = this.theme.grid
+
+        this.grid.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell, y: number) => {
+                this.canvasContext!.strokeRect(
+                    cell.x,
+                    cell.y,
+                    this.cellSize, 
+                    this.cellSize, 
+                )
+            })
+        })
+    }
+
+    private _drawPreviewCells = () => {
+        this.previewCells.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell) => this.drawCell(cell))
+        })
+    }
+
+    private _drawLivingCells = () => {
+        this.grid.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell) => this.drawCell(cell))
+        })
+    }
+
+    private drawCell = (cell: Cell): void => {
+        if (cell.alive) {
+            this.canvasContext!.fillStyle = this.theme.cell.alive
+        } else if (cell.example) {
+            this.canvasContext!.fillStyle = this.theme.cell.example
+        } else {
+            return
+        }
+
+        this.canvasContext!.fillRect(
+            cell.x,
+            cell.y,
+            this.cellSize,
+            this.cellSize
+        )
+    }
+
 
     private onResize = () => {
         clearTimeout(this.resizeTimeout)
@@ -156,42 +243,6 @@ class Conway {
         }
 
         return grid
-    }
-
-    private drawGrid = () => {
-        this.canvasContext!.strokeStyle = this.theme.grid
-
-        this.grid.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell, y: number) => {
-                this.canvasContext!.strokeRect(
-                    cell.x,
-                    cell.y,
-                    this.cellSize, 
-                    this.cellSize, 
-                )
-            })
-        })
-    }
-
-    private drawPreviewCells = () => this.previewCells.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => this.drawCell(cell)))
-
-    private drawLivingCells = () => this.grid.forEach((x: Cell[]) => x.forEach((cell: Cell, y: number) => this.drawCell(cell)))
-
-    private drawCell = (cell: Cell): void => {
-        if (cell.alive) {
-            this.canvasContext!.fillStyle = this.theme.cell.alive
-        } else if (cell.example) {
-            this.canvasContext!.fillStyle = this.theme.cell.example
-        } else {
-            return
-        }
-
-        this.canvasContext!.fillRect(
-            cell.x,
-            cell.y,
-            this.cellSize,
-            this.cellSize
-        )
     }
 
     private getCellAt = (x: number, y: number): Cell => {

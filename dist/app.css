@@ -10,6 +10,21 @@
 
 body {
     background-color: #000;
+    color: #FFF;
+}
+
+/* Default for Form elements */
+button, select {
+    border-radius: 5px;
+    border: none;
+
+    color: #FFF;
+    background-color: #666;
+    font-weight: bold;
+}
+
+button {
+    padding: 5px 10px;
 }
 
 /* Dialog with controls and info */
@@ -82,13 +97,32 @@ header#info #fps {
     right: 5%;
 }
 
+/* Controls */
+header#info #controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* gap: 0.5rem; */
+    margin: 20px 0 0;
+    font-weight: bold;
+}
+header#info #controls > div {
+
+    background-color: #AAA;
+    padding: 5px 10px;
+    /* border: 1px solid #AAA; */
+    border-left: 1px solid #CCC;
+}
+header#info #controls > div:first-child {
+    border-left: none;
+}
+
 /* Pattern select */
 header#info #patterns {
-    margin-top: 10px;
+    /* padding-left: 5px; */
 }
 header#info #patterns select {
     margin-left: 5px;
     padding: 5px 10px;
-    font-weight: bold;
     text-align: center;
 }
