@@ -129,7 +129,7 @@ const updateRealFrameTimeInElement = () => {
     realFpsElement.innerHTML = ConwayGame.currentState == States.RUNNING 
         ? Math.floor(1000 / ConwayGame.getRealFrameTime()).toString() 
         : "0"
-    setTimeout(updateRealFrameTimeInElement, 250)
+    setTimeout(updateRealFrameTimeInElement, 100)
 }
 
 const updateUiElementsByGameState = () => {

@@ -6,6 +6,10 @@ export enum States {
     RUNNING,
     SINGLE_TICK,
 }
+type coordinate = {
+    x: number,
+    y: number
+}
 class Conway {
     // Let's keep things under control
     private MAX_FPS: number = 60
@@ -71,7 +75,8 @@ class Conway {
         private _cellSize: number = 10, 
         private _fps: number = 10
     ) {
-        this.canvasElement = canvasElement as HTMLCanvasElement        
+
+        this.canvasElement = canvasElement as HTMLCanvasElement
         this.canvasContext = this.canvasElement.getContext("2d")!
         this.resizeTimeout = setTimeout(() => {})
         return this
@@ -138,21 +143,43 @@ class Conway {
         this._drawGrid()
     }
 
-    // version 1: Loop through grid checking all cells
+    // version 1: Loop through whole grid and check all cells
     // Mark each cell as dead or alive so we can update state and draw accordingly
-    // --
-    // TODO version 2: Get areas of living cells and only check around those cells?
-    // This should increase loop a lot in many cases
-    private update = () => {
+    // TODO: remove if new update() is stable
+    private fullUpdate = () => {
         const newGrid = this._getNewGrid()
 
-        this.grid.forEach((row, x) => {
-            row.forEach((cell, y) => {
+        this.grid.forEach((column, x) => {
+            column.forEach((cell, y) => {
                 cell.setAliveNeighbours(this.countAliveNeighboursForCell(cell))
                 newGrid[x][y].alive = this.isCellStillAlive(cell)
             }) 
         })
 
+        this.grid = newGrid
+    }
+
+    /**
+     * version 2: Get areas of living cells and only check around those cells:
+     *  1. get grid with of only all alive cells + all cells bordering those
+     *  2. use this 'subset grid' to check for dead or alive cells
+     *  3. TODO: research partial clearing could be desirable aka clear per cell/area
+     */
+    private update = () => {
+        const relevantCells: Cell[][] = this._findRelevantCellsForUpdate()
+        const newGrid = this._getNewGrid()
+
+        relevantCells.forEach((column, x_index) => {
+            column.forEach((cell, y_index) => {
+                // Update counts in 'current' grid to stay in sync
+                this.grid[x_index][y_index].setAliveNeighbours(
+                    this.countAliveNeighboursForCell(cell)
+                )
+                // Update new grid with updated state
+                newGrid[x_index][y_index].alive = 
+                    this.isCellStillAlive(this.grid[x_index][y_index])
+            }) 
+        })
         this.grid = newGrid
     }
 
@@ -223,10 +250,34 @@ class Conway {
             this.setCanvasSize(window.innerWidth, window.innerHeight)
 
             // Calculate difference in grids
-            this._updateCurrentGrid()
+            this._resizeGrid()
 
             console.info("canvas resized: grid updated accordingly")
         }, 100)      
+    }
+
+    private _findRelevantCellsForUpdate = (): Cell[][] => {
+        const relevantCells: Cell[][] = []
+
+        this.grid.forEach((column, x_index) => {
+            column.forEach((cell, y_index) => {
+                if (cell.alive) {
+                    // All cells around cell
+                    for (const coordinate of this.getAllCellNeighbourCoordinates(cell)) {
+                        if (!relevantCells[coordinate.x]) {
+                            relevantCells[coordinate.x] = []
+                        }
+                        if (!relevantCells[coordinate.x][coordinate.y]) {
+                            relevantCells[coordinate.x][coordinate.y] = this._getCellAt(coordinate.x, coordinate.y)
+                        }
+                    }
+
+                    // Current cell itself
+                    relevantCells[x_index][y_index] = cell                   
+                }
+            })
+        })
+        return relevantCells
     }
 
     private _getNewGrid = (): Cell[][] => {
@@ -242,7 +293,7 @@ class Conway {
         return grid
     }
 
-    private _updateCurrentGrid = () => {
+    private _resizeGrid = () => {
         let grid: Cell[][] = this.grid
 
         const increasedWidth = this.canvasElement.width > this.previousCanvasSize.width 
@@ -251,10 +302,10 @@ class Conway {
         // Support increased width/height
         if (increasedWidth || increasedHeight) {
             for (let x = 0; x <= this.canvasElement?.width!; x += this.cellSize) {
-                if (typeof grid[x] === "undefined") {
-                    grid[x] = []
-                }
-                for (let y = 0; y <= this.canvasElement?.height!; y += this.cellSize) {     
+                for (let y = 0; y <= this.canvasElement?.height!; y += this.cellSize) {  
+                    if (typeof grid[x] === "undefined") {
+                        grid[x] = []
+                    }   
                     if (typeof grid[x][y] === "undefined") {
                         grid[x][y] = new Cell(x, y, false)
                     }
@@ -278,11 +329,9 @@ class Conway {
         this.grid = grid
     }
 
-    private _getCellAt = (x: number, y: number): Cell => {
-        return this.grid[x][y]
-    }
+    private _getCellAt = (x: number, y: number): Cell => this.grid[x][y]
 
-    private _overflowPosition = (x: number, y: number): { x: number, y: number } => {
+    private _overflowPosition = (x: number, y: number): coordinate => {
         const overflowedCoordinate = { x, y }
 
         const { width, height } = this.canvasElement!
@@ -364,26 +413,7 @@ class Conway {
 
     countAliveNeighboursForCell = (cell: Cell): number => {
         let aliveNeigbours = 0
-        let res = this.cellSize
-        const { x, y } = cell
-
-        // infinite
-        const cellMatrix: {x: number, y: number}[] = [
-            // 'top'
-            this._overflowPosition(x - res, y - res),   // left
-            this._overflowPosition(x,       y - res),   // middle
-            this._overflowPosition(x + res, y - res),   // right
-            
-            // 'middle'
-            this._overflowPosition(x - res, y),         // left
-            // -- current X / Y 
-            this._overflowPosition(x + res, y),         // right
-        
-            // 'bottom'    
-            this._overflowPosition(x - res, y + res),   // left
-            this._overflowPosition(x,       y + res),   // middle
-            this._overflowPosition(x + res, y + res)    // right
-        ]
+        const cellMatrix: coordinate[] = this.getAllCellNeighbourCoordinates(cell)
 
         for (const coordinate of cellMatrix) {
             if (this._getCellAt(coordinate.x, coordinate.y).alive) {
@@ -392,6 +422,26 @@ class Conway {
         }
 
         return aliveNeigbours
+    }
+
+    getAllCellNeighbourCoordinates = (cell: Cell): coordinate[] => {
+        const {x, y} = cell
+        return [
+            // 'top'
+            this._overflowPosition(x - this.cellSize, y - this.cellSize),   // left
+            this._overflowPosition(x, y - this.cellSize),                   // middle
+            this._overflowPosition(x + this.cellSize, y - this.cellSize),   // right
+            
+            // 'middle'
+            this._overflowPosition(x - this.cellSize, y),                   // left
+            // -- current X / Y 
+            this._overflowPosition(x + this.cellSize, y),                   // right
+        
+            // 'bottom'    
+            this._overflowPosition(x - this.cellSize, y + this.cellSize),   // left
+            this._overflowPosition(x, y + this.cellSize),                   // middle
+            this._overflowPosition(x + this.cellSize, y + this.cellSize)    // right
+        ]
     }
 
     roundToNearest = (number: number, nearest: number = this.cellSize): number => {
