@@ -1,5 +1,5 @@
 # Conway's Game Of Life
-![Drag Racing](./dist/v2.png)
+![Drag Racing](./dist/v3.png)
 [Wiki: Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
 
 ## Setup 
@@ -20,11 +20,16 @@ or open/serve index.html however you want
 5. (WiP) Dynamic resizing and cell-scaling 
 6. (TODO) Gameplay (0)_(0)
 
+## Supported Patterns
+- Blinker
+- Glider
+- Glider Gun
+- Pulsar
+- Switch Engine
+- Eater
+- Herschel
+- and just a cell itself ;-) 
 
 ## But why? 
 First, I always wanted to build my own implementation of G.O.L.  
-Second, I wanted to challenge myself a little and so I created basically just a playground to practice some minor things:
-1. setup typescript/ts-node/esbuild compile-and-bundle process
-2. Mess around with canvas/drawing a bit
-3. Mess around with Typescript
-4. Potentially practice with some data-structures, optimization and the like
+Second, I just want to challenge myself a little and so I created a playground to practice some minor things

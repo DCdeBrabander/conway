@@ -41,6 +41,7 @@ export const ui = () => {
 
     updateSupportedPatternSelect()
     updateRealFrameTimeInElement()
+    updateUiElementsByGameState()
 }
 
 const initializeControlButtons = () => {
@@ -138,10 +139,10 @@ const updateUiElementsByGameState = () => {
 
     // Update play button
     if (ConwayGame.currentState == States.RUNNING) {
-        controlPlayButtonElement.innerText = "> Play"
+        controlPlayButtonElement.innerText = "|| Pause"
         targetFpsElement.innerHTML = ConwayGame.fps.toString()
     } else {
-        controlPlayButtonElement.innerText = "|| Pause"
+        controlPlayButtonElement.innerText = "> Play"
         targetFpsElement.innerHTML = "0"
     }
 }
