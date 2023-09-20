@@ -12,13 +12,14 @@ or open/serve index.html however you want
 
 ## Features
 1. Game of Life's default rules, of course
-2. Pause / Resume
+2. Pause / Resume / Next Frame (Tick)
 3. Presets
    1. Select pattern-presets to insert onto grid
    2. Preview what to insert onto grid
 4. 'Infinite' grid (it loops back around the edges)
-5. (WiP) Dynamic resizing and cell-scaling 
-6. (TODO) Gameplay (0)_(0)
+5. Supports window/canvas resizing
+6. (TODO) grid / cell scaling (zoom / responsiveness) 
+7. (TODO) Gameplay (0)_(0)
 
 ## Supported Patterns
 - Blinker
