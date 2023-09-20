@@ -202,17 +202,23 @@ class Conway {
 
     private _drawGrid = () => {
         this.canvasContext!.strokeStyle = this.theme.grid
+        this.canvasContext.lineWidth = 1
 
-        this.grid.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell, y: number) => {
-                this.canvasContext!.strokeRect(
-                    cell.x,
-                    cell.y,
-                    this.cellSize, 
-                    this.cellSize, 
-                )
-            })
-        })
+        // Draw for every 'column' (X) from top to bottom
+        for (let x = 0; x <= this.canvasElement.width; x += this.cellSize) {
+            this.canvasContext.beginPath()
+            this.canvasContext.moveTo(x, 0)
+            this.canvasContext.lineTo(x, this.canvasElement.height)
+            this.canvasContext.stroke()
+        }
+
+        // Draw for every 'row' (Y) from left to right
+        for (let y = 0; y <= this.canvasElement.height; y += this.cellSize) {
+            this.canvasContext.beginPath()
+            this.canvasContext.moveTo(0, y)
+            this.canvasContext.lineTo(this.canvasElement.width, y)
+            this.canvasContext.stroke()
+        }
     }
 
     private _drawPreviewCells = () => {
