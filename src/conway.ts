@@ -31,6 +31,7 @@ class Conway {
     public currentState: States = States.PAUSED
     private currentPreviewPattern: Patterns = Patterns.CELL
 
+    private previousCanvasSize: { width: number, height: number } = { width: 0, height: 0 }
     private heightOffset: number = 0
     private resizeTimeout: NodeJS.Timeout
 
@@ -78,15 +79,12 @@ class Conway {
 
     init = () => {
         this.setGameState(States.PAUSED)
-        
         this.setCanvasSize(window.innerWidth, window.innerHeight)
-        window.addEventListener('resize', this.onResize, false)
+        window.addEventListener('resize', this._onResize, false)
 
         // Create all cell instances for every grid coordinate
         this.grid = this._getNewGrid()
-
         this.gameLoop()
-
         return this
     }
 
@@ -192,17 +190,17 @@ class Conway {
 
     private _drawPreviewCells = () => {
         this.previewCells.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell) => this.drawCell(cell))
+            x.forEach((cell: Cell) => this._drawCell(cell))
         })
     }
 
     private _drawLivingCells = () => {
         this.grid.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell) => this.drawCell(cell))
+            x.forEach((cell: Cell) => this._drawCell(cell))
         })
     }
 
-    private drawCell = (cell: Cell): void => {
+    private _drawCell = (cell: Cell): void => {
         if (cell.alive) {
             this.canvasContext!.fillStyle = this.theme.cell.alive
         } else if (cell.example) {
@@ -219,12 +217,15 @@ class Conway {
         )
     }
 
-    private onResize = () => {
+    private _onResize = () => {
         clearTimeout(this.resizeTimeout)
-        this.resizeTimeout = setTimeout(() => {     
-            this.setCanvasSize(window.innerWidth, window.innerHeight)            
-            this.init()
-            console.info("canvas resized and reinitialized")
+        this.resizeTimeout = setTimeout(() => {
+            this.setCanvasSize(window.innerWidth, window.innerHeight)
+
+            // Calculate difference in grids
+            this._updateCurrentGrid()
+
+            console.info("canvas resized: grid updated accordingly")
         }, 100)      
     }
 
@@ -239,6 +240,42 @@ class Conway {
         }
 
         return grid
+    }
+
+    private _updateCurrentGrid = () => {
+        let grid: Cell[][] = this.grid
+
+        const increasedWidth = this.canvasElement.width > this.previousCanvasSize.width 
+        const increasedHeight = this.canvasElement.height > this.previousCanvasSize.height
+
+        // Support increased width/height
+        if (increasedWidth || increasedHeight) {
+            for (let x = 0; x <= this.canvasElement?.width!; x += this.cellSize) {
+                if (typeof grid[x] === "undefined") {
+                    grid[x] = []
+                }
+                for (let y = 0; y <= this.canvasElement?.height!; y += this.cellSize) {     
+                    if (typeof grid[x][y] === "undefined") {
+                        grid[x][y] = new Cell(x, y, false)
+                    }
+                }
+            }
+            console.info("Increased size of grid")
+        } else {
+            gridLoop: for (let y = this.previousCanvasSize.height; y >= 0; y -= this.cellSize) {  
+                for (let x = this.previousCanvasSize.width; x >= 0; x -= this.cellSize) {
+                    if (this.canvasElement.height < y) {
+                        delete grid[x][y]
+                    }else if (this.canvasElement.width < x) {
+                        delete grid[x]
+                    } else {
+                        break gridLoop
+                    }
+                }
+            }
+            console.info("Decreased size of grid")
+        }
+        this.grid = grid
     }
 
     private _getCellAt = (x: number, y: number): Cell => {
@@ -282,6 +319,13 @@ class Conway {
     }
 
     setCanvasSize = (width: number, height: number): this => {
+        // Keep track of current size in case of resizing
+        // we need this to correctly update grid without resetting it
+        this.previousCanvasSize = { 
+            width: this.canvasElement!.width,
+            height: this.canvasElement!.height
+        }
+
         const fixedWith = this.roundToNearest(width)
         const fixedHeight = this.roundToNearest(height - this.heightOffset)
 
@@ -316,20 +360,6 @@ class Conway {
         }
 
         return alive
-    }
-
-    // TODO: currently unused
-    toggleCellAtCoordinate = (x: number, y: number): this => {
-        const roundedX = this.roundToNearest(x)
-        const roundedY = this.roundToNearest(y)
-        const cell = this._getCellAt(roundedX, roundedY)
-
-        if (!this._getCellAt(roundedX, roundedY)) {
-            return this
-        }
-
-        cell.alive = !cell.alive
-        return this
     }
 
     countAliveNeighboursForCell = (cell: Cell): number => {
@@ -410,7 +440,21 @@ class Conway {
     showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
         this.showPattern(patternType, currentGridX, currentGridY, true)
 
-    resetPatternPreview = () => this.previewCells = this._getNewGrid() 
+    resetPatternPreview = () => this.previewCells = this._getNewGrid()
+
+    // TODO: currently unused
+    toggleCellAtCoordinate = (x: number, y: number): this => {
+        const roundedX = this.roundToNearest(x)
+        const roundedY = this.roundToNearest(y)
+        const cell = this._getCellAt(roundedX, roundedY)
+
+        if (!this._getCellAt(roundedX, roundedY)) {
+            return this
+        }
+
+        cell.alive = !cell.alive
+        return this
+    }
 }
 
 export default Conway
