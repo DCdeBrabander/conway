@@ -1,5 +1,5 @@
+import { States } from "./CellEngine/CellEngine"
 import { ConwayGame } from "./app"
-import { States } from "./conway"
 import { Patterns } from "./patterns/index"
 
 // Main header
@@ -46,7 +46,7 @@ export const ui = () => {
 const initializeControlButtons = () => {
     controlTickButtonElement.onclick = () => {
         ConwayGame.allowTick = true
-        ConwayGame.setGameState(States.SINGLE_TICK)
+        ConwayGame.setState(States.SINGLE_TICK)
     }
 
     controlPlayButtonElement.onclick = () => {
@@ -56,7 +56,7 @@ const initializeControlButtons = () => {
 }
 
 const initializeMouseListener = () => {
-    const canvasElement = ConwayGame.getCanvasElement()
+    const canvasElement = ConwayGame.getCanvas()
 
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
         const { x, y } = getCorrectedMouseCoordinates(event, canvasElement)
@@ -71,6 +71,8 @@ const initializeMouseListener = () => {
     canvasElement.addEventListener('mouseleave', () => {
         ConwayGame.resetPatternPreview()
     }, false)
+
+    window.addEventListener('resize', ConwayGame.onResize, false)
 }
 
 const initializeKeyboardListener = () => {
@@ -116,13 +118,13 @@ const updateSupportedPatternSelect = () => ConwayGame.getSupportedPatterns().for
  */
 const updateRealFrameTimeInElement = () => {
     realFpsElement.innerHTML = ConwayGame.isRunning() 
-        ? Math.floor(1000 / ConwayGame.getRealFrameTime()).toString() 
+        ? Math.floor(1000 / ConwayGame.getLastFrameTime()).toString() 
         : "0"
     setTimeout(updateRealFrameTimeInElement, 100)
 }
 
 const updateUiElementsByGameState = () => {
-    const gameStateString = ConwayGame.getGameState().toString()
+    const gameStateString = ConwayGame.getState().toString()
     document.title = "Conway's Game of Life - " + gameStateString
     stateInfoElement!.innerHTML = gameStateString
 

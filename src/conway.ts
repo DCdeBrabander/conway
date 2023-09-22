@@ -1,22 +1,13 @@
 import { Color } from "./CellEngine/Color"
-import { CellEngine, CellMath, Coordinate } from "./CellEngine/CellEngine"
+import { CellEngine, CellMath, Coordinate, States } from "./CellEngine/CellEngine"
 import Cell from "./cell"
 import { GetPattern, Patterns } from "./patterns/index"
 
-export enum States {
-    PAUSED = "Paused",
-    RUNNING = "Running",
-    SINGLE_TICK = "Singe tick",
-}
 
 // Let's keep things under control
-const MAX_FPS: number = 60
 const MAX_CELL_SIZE: number = 100
 
 class Conway extends CellEngine {
-    private realFrameTime: number = 0
-    private _allowTick: boolean = true
-
     private theme = {
         grid: new Color("#888"),
         cell: {
@@ -29,24 +20,11 @@ class Conway extends CellEngine {
     private grid: Cell[][] = []
     private previewCells: Cell[][] = []
  
-    private gameState: States = States.PAUSED
     private currentPreviewPattern: Patterns = Patterns.CELL
 
     private previousCanvasSize: { width: number, height: number } = { width: 0, height: 0 }
     private heightOffset: number = 0
     private resizeTimeout: NodeJS.Timeout
-
-    public get fps(): number {
-        return this._fps
-    }
-    public set fps(value: number) {
-        if (value > MAX_FPS) {
-            console.info("Maximum FPS reached: " + MAX_FPS)
-            this._fps = MAX_FPS
-        } else {
-            this._fps = value
-        }
-    }
 
     public get cellSize(): number {
         return this._cellSize
@@ -60,134 +38,109 @@ class Conway extends CellEngine {
         }
     }
 
-    public get allowTick(): boolean {
-        return this._allowTick
-    }
-    public set allowTick(value: boolean) {
-        this._allowTick = value
-    }
-
     constructor (
         canvasElement: HTMLCanvasElement, 
         private _cellSize: number = 10, 
-        private _fps: number = 10
+        fps: number = 10
     ) {
-        super(canvasElement)
+        super(canvasElement, fps)
         this.resizeTimeout = setTimeout(() => {})
         CellMath.setNearestRounding(this._cellSize)
+        this.setup()
         return this
     }
 
     public init = () => {
-        this.setGameState(States.PAUSED)
-        this.updateConwayGridSize(window.innerWidth, window.innerHeight)
-        window.addEventListener('resize', this._onResize, false)
+        this.setState(States.PAUSED)
+
+        this._updateConwayGridSize(window.innerWidth, window.innerHeight)
 
         // Create all cell instances for every grid coordinate
         this.grid = this._getNewGrid()
-        this.gameLoop()
+        this.run()
 
         return this
     }
 
-    private gameLoop = () => {
-        const startFrameTime = performance.timeOrigin + performance.now()
+    /**
+     * Tell CellEngine/Parent what we want to run on which game-state 
+     * TODO: introduce custom game-states
+     */
+    public setup = () => {
+        this.runOnState(States.RUNNING, () => {
+            this._updateCellsInGrid()
+            this.draw()
+        })
 
-        // Only update if running
-        switch (this.gameState) {
-            case States.RUNNING: 
-                this.run()
-                break
-            case States.PAUSED:
-                this.paused()
-                break;
-            case States.SINGLE_TICK:
-                this.tick()
-                break
-        }
+        this.runOnState(States.PAUSED, () => {
+            this.draw()
+        })
 
-        this.realFrameTime = (performance.timeOrigin + performance.now() - startFrameTime)  
+        this.runOnState(States.SINGLE_TICK, () => {
+            this.draw()
 
-        setTimeout(() => {
-            requestAnimationFrame(this.gameLoop)
-        }, 1000 / this.fps)
+            if (!this.allowTick) {
+                return
+            }
+            
+            this.onRunning()
+            this.allowTick = false
+        })
     }
     
-    private tick = () => {
-        this.draw()
-
-        if (!this._allowTick) {
-            return
-        }
-        
-        this.run()
-        this._allowTick = false
-    }
-    
-    private paused = () => {
-        this.draw()
-    }
-   
-    private run = () => {
-        this.update()
-        this.draw()
-    }
-
-    private draw = () => {
-        this._clear()
+    /**
+     * Wraps all draw logic for the game
+     */
+    public draw = () => {
+        this.clearCanvas()
+        this.setCanvasBackground(this.theme.background)
         this._drawPreviewCells()
         this._drawLivingCells()
         this._drawGrid()
     }
 
-    /**
-     * version 2: Get areas of living cells and only check around those cells:
-     *  1. get grid with of only all alive cells + all cells bordering those
-     *  2. use this 'subset grid' to check for dead or alive cells
-     *  3. TODO: research partial clearing could be desirable aka clear per cell/area
-     */
-    private update = () => {
-        const relevantCells: Cell[][] = this._findRelevantCellsForUpdate()
-        const newGrid = this._getNewGrid()
+    public onResize = () => {
+        clearTimeout(this.resizeTimeout)
+        this.resizeTimeout = setTimeout(() => {
+            this._updateConwayGridSize(window.innerWidth, window.innerHeight)
 
-        relevantCells.forEach((column, x_index) => {
-            column.forEach((cell, y_index) => {
-                // Update counts in 'current' grid to stay in sync
-                this.grid[x_index][y_index].setAliveNeighbours(
-                    this._countAliveNeighboursForCell(cell)
-                )
-                // Update new grid with updated state
-                newGrid[x_index][y_index].alive = 
-                    this._isCellStillAlive(this.grid[x_index][y_index])
-            }) 
-        })
-        this.grid = newGrid
+            // Calculate difference in grids
+            this._resizeGrid()
+
+            console.info("canvas resized: grid updated accordingly")
+        }, 100)      
     }
 
-    private _clear = () => {
-        this.clearCanvas()
-        this.setCanvasBackground(this.theme.background)
-    }
-
-    public pause = (toggle: boolean = false) => {
-        if (toggle) {
-            this.setGameState(
-                this.gameState == States.RUNNING 
-                ? States.PAUSED
-                : States.RUNNING
-            )
-        } else {
-            this.setGameState(States.PAUSED)
+    public insertPattern = (
+        patternType: Patterns,
+        currentGridX: number,
+        currentGridY: number,
+        example: boolean = false
+    ): void => {
+        if (!example && patternType == Patterns.CELL) {
+            this.toggleCellAtCoordinate(currentGridX, currentGridY)
+            return
         }
+        this._insertPattern(patternType, currentGridX, currentGridY, example)
     }
 
-    public isRunning = () => this.gameState == States.RUNNING
+    public showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
+        this.insertPattern(patternType, currentGridX, currentGridY, true)
 
-    public getGameState = () => this.gameState
+    public resetPatternPreview = () => this.previewCells = this._getNewGrid()
 
-    public getCanvasElement = ():HTMLCanvasElement => this.getCanvas()
+    public toggleCellAtCoordinate = (x: number, y: number): this => {
+        const roundedX = CellMath.roundToNearest(x)
+        const roundedY = CellMath.roundToNearest(y)
+        const cell = this._getCellAt(roundedX, roundedY)
 
-    public getRealFrameTime = () => this.realFrameTime
+        if (!this._getCellAt(roundedX, roundedY)) {
+            return this
+        }
+
+        cell.alive = !cell.alive
+        return this
+    }
 
     public getSupportedPatterns = () => Object.keys(Patterns)
 
@@ -203,7 +156,7 @@ class Conway extends CellEngine {
         return this
     }
 
-    public updateConwayGridSize = (newWidth: number, newHeight: number): this => {
+    private _updateConwayGridSize = (newWidth: number, newHeight: number): this => {
         // Keep track of current size in case of resizing
         // we need this to correctly update grid without resetting it
         const { width, height } = this.getCanvasSize()
@@ -216,9 +169,22 @@ class Conway extends CellEngine {
         return this
     }
 
-    public setGameState = (state: States): this => { 
-        this.gameState = state
-        return this
+    private _updateCellsInGrid = () => {
+        const relevantCells: Cell[][] = this._findRelevantCellsForUpdate()
+        const newGrid = this._getNewGrid()
+
+        relevantCells.forEach((column, x_index) => {
+            column.forEach((cell, y_index) => {
+                // Update counts in 'current' grid to stay in sync
+                this.grid[x_index][y_index].setAliveNeighbours(
+                    this._countAliveNeighboursForCell(cell)
+                )
+                // Update new grid with updated state
+                newGrid[x_index][y_index].alive = 
+                    this._isCellStillAlive(this.grid[x_index][y_index])
+            }) 
+        })
+        this.grid = newGrid
     }
 
     private _drawGrid = () => {
@@ -258,18 +224,6 @@ class Conway extends CellEngine {
             return
         }
         this.drawSquare(cell.x, cell.y, this.cellSize)
-    }
-
-    private _onResize = () => {
-        clearTimeout(this.resizeTimeout)
-        this.resizeTimeout = setTimeout(() => {
-            this.updateConwayGridSize(window.innerWidth, window.innerHeight)
-
-            // Calculate difference in grids
-            this._resizeGrid()
-
-            console.info("canvas resized: grid updated accordingly")
-        }, 100)      
     }
 
     private _findRelevantCellsForUpdate = (): Cell[][] => {
@@ -472,37 +426,6 @@ class Conway extends CellEngine {
                 grid[x][y] = cell
             })
         })
-    }
-
-    public insertPattern = (
-        patternType: Patterns,
-        currentGridX: number,
-        currentGridY: number,
-        example: boolean = false
-    ): void => {
-        if (!example && patternType == Patterns.CELL) {
-            this.toggleCellAtCoordinate(currentGridX, currentGridY)
-            return
-        }
-        this._insertPattern(patternType, currentGridX, currentGridY, example)
-    }
-
-    public showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
-        this.insertPattern(patternType, currentGridX, currentGridY, true)
-
-    public resetPatternPreview = () => this.previewCells = this._getNewGrid()
-
-    public toggleCellAtCoordinate = (x: number, y: number): this => {
-        const roundedX = CellMath.roundToNearest(x)
-        const roundedY = CellMath.roundToNearest(y)
-        const cell = this._getCellAt(roundedX, roundedY)
-
-        if (!this._getCellAt(roundedX, roundedY)) {
-            return this
-        }
-
-        cell.alive = !cell.alive
-        return this
     }
 }
 
