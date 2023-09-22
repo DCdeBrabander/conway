@@ -10,11 +10,12 @@ type coordinate = {
     x: number,
     y: number
 }
-class Conway {
-    // Let's keep things under control
-    private MAX_FPS: number = 60
-    private MAX_CELL_SIZE: number = 100
 
+// Let's keep things under control
+const MAX_FPS: number = 60
+const MAX_CELL_SIZE: number = 100
+
+class Conway {
     private realFrameTime: number = 0
     private _allowTick: boolean = true
 
@@ -43,9 +44,9 @@ class Conway {
         return this._fps
     }
     public set fps(value: number) {
-        if (value > this.MAX_FPS) {
-            console.info("Maximum FPS reached: " + this.MAX_FPS)
-            this._fps = this.MAX_FPS
+        if (value > MAX_FPS) {
+            console.info("Maximum FPS reached: " + MAX_FPS)
+            this._fps = MAX_FPS
         } else {
             this._fps = value
         }
@@ -55,9 +56,9 @@ class Conway {
         return this._cellSize
     }
     public set cellSize(value: number) {
-        if (value > this.MAX_CELL_SIZE) {
-            console.info("Maximum Cell Size reached: " + this.MAX_CELL_SIZE)
-            this._cellSize = this.MAX_CELL_SIZE
+        if (value > MAX_CELL_SIZE) {
+            console.info("Maximum Cell Size reached: " + MAX_CELL_SIZE)
+            this._cellSize = MAX_CELL_SIZE
         } else {
             this._cellSize = value
         }
