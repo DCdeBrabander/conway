@@ -1,3 +1,5 @@
+import { Color } from "./CellEngine/Color"
+import { CellEngine, CellMath, Coordinate } from "./CellEngine/CellEngine"
 import Cell from "./cell"
 import { GetPattern, Patterns } from "./patterns/index"
 
@@ -6,33 +8,27 @@ export enum States {
     RUNNING = "Running",
     SINGLE_TICK = "Singe tick",
 }
-type coordinate = {
-    x: number,
-    y: number
-}
 
 // Let's keep things under control
 const MAX_FPS: number = 60
 const MAX_CELL_SIZE: number = 100
 
-class Conway {
+class Conway extends CellEngine {
     private realFrameTime: number = 0
     private _allowTick: boolean = true
 
     private theme = {
-        grid: "#888",
+        grid: new Color("#888"),
         cell: {
-            alive: "#FFF",
-            example: "#AAA",
+            alive: new Color("#FFF"),
+            example: new Color("#AAA"),
         },
-        background: "#222"
+        background: new Color("#222")
     }
     
     private grid: Cell[][] = []
     private previewCells: Cell[][] = []
  
-    private canvasContext: CanvasRenderingContext2D
-
     private gameState: States = States.PAUSED
     private currentPreviewPattern: Patterns = Patterns.CELL
 
@@ -72,23 +68,25 @@ class Conway {
     }
 
     constructor (
-        private _canvasElement: HTMLCanvasElement, 
+        canvasElement: HTMLCanvasElement, 
         private _cellSize: number = 10, 
         private _fps: number = 10
     ) {
-        this.canvasContext = this._canvasElement.getContext("2d")!
+        super(canvasElement)
         this.resizeTimeout = setTimeout(() => {})
+        CellMath.setNearestRounding(this._cellSize)
         return this
     }
 
     public init = () => {
         this.setGameState(States.PAUSED)
-        this.setCanvasSize(window.innerWidth, window.innerHeight)
+        this.updateConwayGridSize(window.innerWidth, window.innerHeight)
         window.addEventListener('resize', this._onResize, false)
 
         // Create all cell instances for every grid coordinate
         this.grid = this._getNewGrid()
         this.gameLoop()
+
         return this
     }
 
@@ -167,185 +165,8 @@ class Conway {
     }
 
     private _clear = () => {
-        this.canvasContext!.fillStyle = this.theme.background
-
-        this.canvasContext!.clearRect(
-            0,
-            0,
-            this._canvasElement!.width,
-            this._canvasElement!.height
-        )
-        this.canvasContext!.fillRect(
-            0,
-            0,
-            this._canvasElement!.width, 
-            this._canvasElement!.height
-        )
-    }
-
-    private _drawGrid = () => {
-        this.canvasContext!.strokeStyle = this.theme.grid
-        this.canvasContext.lineWidth = 1
-
-        // Draw for every 'column' (X) from top to bottom
-        for (let x = 0; x <= this._canvasElement.width; x += this.cellSize) {
-            this.canvasContext.beginPath()
-            this.canvasContext.moveTo(x, 0)
-            this.canvasContext.lineTo(x, this._canvasElement.height)
-            this.canvasContext.stroke()
-        }
-
-        // Draw for every 'row' (Y) from left to right
-        for (let y = 0; y <= this._canvasElement.height; y += this.cellSize) {
-            this.canvasContext.beginPath()
-            this.canvasContext.moveTo(0, y)
-            this.canvasContext.lineTo(this._canvasElement.width, y)
-            this.canvasContext.stroke()
-        }
-    }
-
-    private _drawPreviewCells = () => {
-        this.previewCells.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell) => this._drawCell(cell))
-        })
-    }
-
-    private _drawLivingCells = () => {
-        this.grid.forEach((x: Cell[]) => {
-            x.forEach((cell: Cell) => this._drawCell(cell))
-        })
-    }
-
-    private _drawCell = (cell: Cell): void => {
-        if (cell.alive) {
-            this.canvasContext!.fillStyle = this.theme.cell.alive
-        } else if (cell.example) {
-            this.canvasContext!.fillStyle = this.theme.cell.example
-        } else {
-            return
-        }
-
-        this.canvasContext!.fillRect(
-            cell.x,
-            cell.y,
-            this.cellSize,
-            this.cellSize
-        )
-    }
-
-    private _onResize = () => {
-        clearTimeout(this.resizeTimeout)
-        this.resizeTimeout = setTimeout(() => {
-            this.setCanvasSize(window.innerWidth, window.innerHeight)
-
-            // Calculate difference in grids
-            this._resizeGrid()
-
-            console.info("canvas resized: grid updated accordingly")
-        }, 100)      
-    }
-
-    private _findRelevantCellsForUpdate = (): Cell[][] => {
-        const relevantCells: Cell[][] = []
-        const { width, height } = this._canvasElement
-
-        // Instead of looping through grid we just iterate 'manually' in grid steps
-        // This should result in exact same behaviour as looping through (this.)grid
-        // but more performant
-        // TODO: consider for-looping through this.grid directly
-        for (let x = 0; x <= width; x += this.cellSize) {
-            for (let y = 0; y <= height; y += this.cellSize) {
-                if (!this.grid[x][y].alive) {
-                    continue
-                }
-
-                // All cells around cell
-                for (const coordinate of this._getAllCellNeighbourCoordinates(this.grid[x][y])) {
-                    if (!relevantCells[coordinate.x]) {
-                        relevantCells[coordinate.x] = []
-                    }
-                    if (!relevantCells[coordinate.x][coordinate.y]) {
-                        relevantCells[coordinate.x][coordinate.y] = this._getCellAt(coordinate.x, coordinate.y)
-                    }
-                }
-
-                // Current cell itself
-                relevantCells[x][y] = this.grid[x][y]                   
-            }
-        }
-
-        return relevantCells
-    }
-
-    private _getNewGrid = (): Cell[][] => {
-        let grid: Cell[][] = []
-
-        for (let x = 0; x <= this._canvasElement?.width!; x += this.cellSize) {
-            grid[x] = []
-            for (let y = 0; y <= this._canvasElement?.height!; y += this.cellSize) {     
-                grid[x][y] = new Cell(x, y, false)
-            }
-        }
-
-        return grid
-    }
-
-    private _resizeGrid = () => {
-        let grid: Cell[][] = this.grid
-
-        const increasedWidth = this._canvasElement.width > this.previousCanvasSize.width 
-        const increasedHeight = this._canvasElement.height > this.previousCanvasSize.height
-
-        // Support increased width/height
-        if (increasedWidth || increasedHeight) {
-            for (let x = 0; x <= this._canvasElement?.width!; x += this.cellSize) {
-                for (let y = 0; y <= this._canvasElement?.height!; y += this.cellSize) {  
-                    if (typeof grid[x] === "undefined") {
-                        grid[x] = []
-                    }   
-                    if (typeof grid[x][y] === "undefined") {
-                        grid[x][y] = new Cell(x, y, false)
-                    }
-                }
-            }
-            console.info("Increased size of grid")
-        } else {
-            gridLoop: for (let y = this.previousCanvasSize.height; y >= 0; y -= this.cellSize) {  
-                for (let x = this.previousCanvasSize.width; x >= 0; x -= this.cellSize) {
-                    if (this._canvasElement.height < y) {
-                        delete grid[x][y]
-                    }else if (this._canvasElement.width < x) {
-                        delete grid[x]
-                    } else {
-                        break gridLoop
-                    }
-                }
-            }
-            console.info("Decreased size of grid")
-        }
-        this.grid = grid
-    }
-
-    private _getCellAt = (x: number, y: number): Cell => this.grid[x][y]
-
-    private _overflowPosition = (x: number, y: number): coordinate => {
-        const overflowedCoordinate = { x, y }
-
-        const { width, height } = this._canvasElement!
-
-        if (x < 0) {    
-            overflowedCoordinate.x = width - this.cellSize
-        } else if (x >= width) {
-            overflowedCoordinate.x = 0
-        }
-
-        if (y < 0) {
-            overflowedCoordinate.y = height - this.cellSize
-        } else if (y >= height) {
-            overflowedCoordinate.y = 0
-        }
-
-        return overflowedCoordinate
+        this.clearCanvas()
+        this.setCanvasBackground(this.theme.background)
     }
 
     public pause = (toggle: boolean = false) => {
@@ -364,7 +185,7 @@ class Conway {
 
     public getGameState = () => this.gameState
 
-    public getCanvasElement = ():HTMLCanvasElement => this._canvasElement
+    public getCanvasElement = ():HTMLCanvasElement => this.getCanvas()
 
     public getRealFrameTime = () => this.realFrameTime
 
@@ -382,29 +203,179 @@ class Conway {
         return this
     }
 
-    public setCanvasSize = (width: number, height: number): this => {
+    public updateConwayGridSize = (newWidth: number, newHeight: number): this => {
         // Keep track of current size in case of resizing
         // we need this to correctly update grid without resetting it
-        this.previousCanvasSize = { 
-            width: this._canvasElement!.width,
-            height: this._canvasElement!.height
-        }
+        const { width, height } = this.getCanvasSize()
+        this.previousCanvasSize = { width, height }
 
-        const fixedWith = this._roundToNearest(width)
-        const fixedHeight = this._roundToNearest(height - this.heightOffset)
-
-        this._canvasElement!.style.width = fixedWith + "px"
-        this._canvasElement!.style.height = fixedHeight + "px"
-
-        this._canvasElement!.width = fixedWith
-        this._canvasElement!.height = fixedHeight
-
+        const fixedWidth = CellMath.roundToNearest(newWidth)
+        const fixedHeight = CellMath.roundToNearest(newHeight - this.heightOffset)
+        
+        this.setCanvasSize(fixedWidth, fixedHeight)
         return this
     }
 
     public setGameState = (state: States): this => { 
         this.gameState = state
         return this
+    }
+
+    private _drawGrid = () => {
+        this.setStrokeColor(this.theme.grid )
+        const canvasRef = this.getCanvasSize()
+
+        // Draw for every 'column' (X) from top to bottom
+        for (let x = 0; x <= canvasRef.width; x += this.cellSize) {
+            this.drawLine(x, 0, x, canvasRef.height)
+        }
+
+        // Draw for every 'row' (Y) from left to right
+        for (let y = 0; y <= canvasRef.height; y += this.cellSize) {
+            this.drawLine(0, y, canvasRef.width, y)
+        }
+    }
+
+    private _drawPreviewCells = () => {
+        this.previewCells.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell) => this._drawCell(cell))
+        })
+    }
+
+    private _drawLivingCells = () => {
+        this.grid.forEach((x: Cell[]) => {
+            x.forEach((cell: Cell) => this._drawCell(cell))
+        })
+    }
+
+    private _drawCell = (cell: Cell): void => {
+        const { alive: aliveColor, example: exampleColor } = this.theme.cell
+        if (cell.alive) {
+            this.setFillColor(aliveColor)
+        } else if (cell.example) {
+            this.setFillColor(exampleColor)
+        } else {
+            return
+        }
+        this.drawSquare(cell.x, cell.y, this.cellSize)
+    }
+
+    private _onResize = () => {
+        clearTimeout(this.resizeTimeout)
+        this.resizeTimeout = setTimeout(() => {
+            this.updateConwayGridSize(window.innerWidth, window.innerHeight)
+
+            // Calculate difference in grids
+            this._resizeGrid()
+
+            console.info("canvas resized: grid updated accordingly")
+        }, 100)      
+    }
+
+    private _findRelevantCellsForUpdate = (): Cell[][] => {
+        const relevantCells: Cell[][] = []
+        const { width, height } = this.getCanvasSize()
+
+        // Instead of looping through grid we just iterate 'manually' in grid steps
+        // This should result in exact same behaviour as looping through (this.)grid
+        // but more performant
+        for (let x = 0; x <= width; x += this.cellSize) {
+            for (let y = 0; y <= height; y += this.cellSize) {
+                if (!this.grid[x][y].alive) {
+                    continue
+                }
+
+                // All cells around cell
+                for (const coordinate of this._getAllCellNeighbourCoordinates(this.grid[x][y])) {
+                    if (!relevantCells[coordinate.x]) {
+                        relevantCells[coordinate.x] = []
+                    }
+                    if (!relevantCells[coordinate.x][coordinate.y]) {
+                        relevantCells[coordinate.x][coordinate.y] = 
+                            this._getCellAt(coordinate.x, coordinate.y)
+                    }
+                }
+
+                // Current cell itself
+                relevantCells[x][y] = this.grid[x][y]                   
+            }
+        }
+
+        return relevantCells
+    }
+
+    private _getNewGrid = (): Cell[][] => {
+        let grid: Cell[][] = []
+        const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize()
+
+        for (let x = 0; x <= canvasWidth; x += this.cellSize) {
+            grid[x] = []
+            for (let y = 0; y <= canvasHeight; y += this.cellSize) {     
+                grid[x][y] = new Cell(x, y, false)
+            }
+        }
+
+        return grid
+    }
+
+    private _resizeGrid = () => {
+        let grid: Cell[][] = this.grid
+
+        const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize()
+
+        const increasedWidth = canvasWidth > this.previousCanvasSize.width 
+        const increasedHeight = canvasHeight > this.previousCanvasSize.height
+
+        // Support increased width/height
+        if (increasedWidth || increasedHeight) {
+            for (let x = 0; x <= canvasWidth!; x += this.cellSize) {
+                for (let y = 0; y <= canvasHeight!; y += this.cellSize) {  
+                    if (typeof grid[x] === "undefined") {
+                        grid[x] = []
+                    }   
+                    if (typeof grid[x][y] === "undefined") {
+                        grid[x][y] = new Cell(x, y, false)
+                    }
+                }
+            }
+            console.info("Increased size of grid")
+        } else {
+            gridLoop: for (let y = this.previousCanvasSize.height; y >= 0; y -= this.cellSize) {  
+                for (let x = this.previousCanvasSize.width; x >= 0; x -= this.cellSize) {
+                    if (canvasHeight < y) {
+                        delete grid[x][y]
+                    }else if (canvasWidth < x) {
+                        delete grid[x]
+                    } else {
+                        break gridLoop
+                    }
+                }
+            }
+            console.info("Decreased size of grid")
+        }
+        this.grid = grid
+    }
+
+    private _getCellAt = (x: number, y: number): Cell => this.grid[x][y]
+
+    private _overflowPosition = (x: number, y: number): Coordinate => {
+        const overflowedCoordinate = { x, y }
+
+        const { width, height } = this.getCanvasSize()
+
+        if (x < 0) {    
+            overflowedCoordinate.x = width - this.cellSize
+        } else if (x >= width) {
+            overflowedCoordinate.x = 0
+        }
+
+        if (y < 0) {
+            overflowedCoordinate.y = height - this.cellSize
+        } else if (y >= height) {
+            overflowedCoordinate.y = 0
+        }
+
+        return overflowedCoordinate
     }
 
     private _isCellStillAlive = (cell: Cell): boolean => {
@@ -428,7 +399,7 @@ class Conway {
 
     private _countAliveNeighboursForCell = (cell: Cell): number => {
         let aliveNeigbours = 0
-        const cellMatrix: coordinate[] = this._getAllCellNeighbourCoordinates(cell)
+        const cellMatrix: Coordinate[] = this._getAllCellNeighbourCoordinates(cell)
 
         for (const coordinate of cellMatrix) {
             if (this._getCellAt(coordinate.x, coordinate.y).alive) {
@@ -439,7 +410,7 @@ class Conway {
         return aliveNeigbours
     }
 
-    private _getAllCellNeighbourCoordinates = (cell: Cell): coordinate[] => {
+    private _getAllCellNeighbourCoordinates = (cell: Cell): Coordinate[] => {
         const {x, y} = cell
         return [
             // 'top'
@@ -459,11 +430,12 @@ class Conway {
         ]
     }
 
-    private _roundToNearest = (number: number, nearest: number = this.cellSize): number => {
-        return Math.floor(number / nearest) * nearest
-    }
-
-    public insertPattern = (patternType: Patterns, currentGridX: number, currentGridY: number, example: boolean = false) => {
+    private _insertPattern = (
+        patternType: Patterns,
+        currentGridX: number,
+        currentGridY: number,
+        example: boolean = false
+    ): void=> {
         const pattern: number[][] = GetPattern(patternType)
         let grid: Cell[][] = []
 
@@ -484,8 +456,8 @@ class Conway {
         // Every value per row == X
         pattern.forEach((row, previewY) => {
             row.forEach((showCell, previewX) => {
-                const x = this._roundToNearest(((previewX - offsetX) * this.cellSize) + currentGridX)
-                const y = this._roundToNearest(((previewY - offsetY) * this.cellSize) + currentGridY) 
+                const x = CellMath.roundToNearest(((previewX - offsetX) * this.cellSize) + currentGridX)
+                const y = CellMath.roundToNearest(((previewY - offsetY) * this.cellSize) + currentGridY) 
 
                 if (typeof grid[x][y] === "undefined" || ! grid[x][y]) {
                     return
@@ -502,15 +474,27 @@ class Conway {
         })
     }
 
+    public insertPattern = (
+        patternType: Patterns,
+        currentGridX: number,
+        currentGridY: number,
+        example: boolean = false
+    ): void => {
+        if (!example && patternType == Patterns.CELL) {
+            this.toggleCellAtCoordinate(currentGridX, currentGridY)
+            return
+        }
+        this._insertPattern(patternType, currentGridX, currentGridY, example)
+    }
+
     public showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
         this.insertPattern(patternType, currentGridX, currentGridY, true)
 
     public resetPatternPreview = () => this.previewCells = this._getNewGrid()
 
-    // TODO: currently unused
     public toggleCellAtCoordinate = (x: number, y: number): this => {
-        const roundedX = this._roundToNearest(x)
-        const roundedY = this._roundToNearest(y)
+        const roundedX = CellMath.roundToNearest(x)
+        const roundedY = CellMath.roundToNearest(y)
         const cell = this._getCellAt(roundedX, roundedY)
 
         if (!this._getCellAt(roundedX, roundedY)) {

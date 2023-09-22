@@ -35,7 +35,6 @@ export const ui = () => {
     })
     
     initializeControlButtons()
-
     initializeMouseListener()
     initializeKeyboardListener()
 
