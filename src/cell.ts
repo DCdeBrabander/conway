@@ -1,23 +1,14 @@
 class Cell {
-    x: number = 0
-    y: number = 0
-    size: number = 0
-
-    example: boolean = false
-    alive: boolean = true
-    aliveNeighbours: number = 0
-
     constructor (
-        x: number, 
-        y: number, 
-        alive: boolean
-    ) {
-        this.x = x
-        this.y = y
-        this.alive = alive
-    }
+        public x: number = 0, 
+        public y: number = 0, 
+        public alive: boolean = true,
+        public example: boolean = false,
+        public size: number = 0,
+        public aliveNeighbours: number = 0
+    ) {}
 
-    setAliveNeighbours = (amount: number) => this.aliveNeighbours = amount 
+    public setAliveNeighbours = (amount: number) => this.aliveNeighbours = amount 
 }
 
 export default Cell

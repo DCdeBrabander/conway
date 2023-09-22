@@ -51,39 +51,34 @@ const initializeControlButtons = () => {
     }
 
     controlPlayButtonElement.onclick = () => {
-        if (ConwayGame.currentState == States.RUNNING) {
-            ConwayGame.setGameState(States.PAUSED)
-        } else {
-            ConwayGame.setGameState(States.RUNNING)
-        }
-
+        ConwayGame.pause(true)
         updateUiElementsByGameState()
     }
 }
 
 const initializeMouseListener = () => {
-    ConwayGame.canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-        const { x, y } = getCorrectedMouseCoordinates(event, ConwayGame.canvasElement)
-        ConwayGame.showPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
+    const canvasElement = ConwayGame.getCanvasElement()
+
+    canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
+        const { x, y } = getCorrectedMouseCoordinates(event, canvasElement)
+        ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
 
-    ConwayGame.canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
-        const { x, y } = getCorrectedMouseCoordinates(event, ConwayGame.canvasElement)
+    canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
+        const { x, y } = getCorrectedMouseCoordinates(event, canvasElement)
         ConwayGame.showPatternPreview(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
 
-    ConwayGame.canvasElement.addEventListener('mouseleave', (event: MouseEvent) => {
+    canvasElement.addEventListener('mouseleave', () => {
         ConwayGame.resetPatternPreview()
     }, false)
 }
 
 const initializeKeyboardListener = () => {
     window.addEventListener('keyup', (event: KeyboardEvent) => {
-        const pressedKey = event.key.toLowerCase()
-
-        switch (pressedKey) {
+        switch (event.key.toLowerCase()) {
             case "p":
-                ConwayGame.setGameState(States.PAUSED)
+                ConwayGame.pause()
                 break
             case "h":
                 if (!helpDialogElement.open) {
@@ -92,17 +87,12 @@ const initializeKeyboardListener = () => {
                     helpDialogElement.close()
                 }
                 break
-            case " ": 
-                ConwayGame.setGameState(
-                    ConwayGame.currentState == States.RUNNING 
-                    ? States.PAUSED
-                    : States.RUNNING
-                )
+            case " ":
+                ConwayGame.pause(true)
                 break
             default:
                 break
         }
-
         updateUiElementsByGameState()
     }, false)
 }
@@ -126,19 +116,19 @@ const updateSupportedPatternSelect = () => ConwayGame.getSupportedPatterns().for
  * Show user actual time it took to calculate frames
  */
 const updateRealFrameTimeInElement = () => {
-    realFpsElement.innerHTML = ConwayGame.currentState == States.RUNNING 
+    realFpsElement.innerHTML = ConwayGame.isRunning() 
         ? Math.floor(1000 / ConwayGame.getRealFrameTime()).toString() 
         : "0"
     setTimeout(updateRealFrameTimeInElement, 100)
 }
 
 const updateUiElementsByGameState = () => {
-    const gameStateString = Object.keys(States)[Object.values(States).indexOf(ConwayGame.currentState)]
+    const gameStateString = ConwayGame.getGameState().toString()
     document.title = "Conway's Game of Life - " + gameStateString
     stateInfoElement!.innerHTML = gameStateString
 
     // Update play button
-    if (ConwayGame.currentState == States.RUNNING) {
+    if (ConwayGame.isRunning()) {
         controlPlayButtonElement.innerText = "|| Pause"
         targetFpsElement.innerHTML = ConwayGame.fps.toString()
     } else {
