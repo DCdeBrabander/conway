@@ -101,7 +101,12 @@ export class CellEngine {
 
     onRunning = () => this._stateCallables.get(States.RUNNING)?.forEach(callableFunction => callableFunction.call(this))
     onPaused = () => this._stateCallables.get(States.PAUSED)?.forEach((callableFunction => callableFunction.call(this)))
-    onTick = () => this._stateCallables.get(States.SINGLE_TICK)?.forEach((callableFunction => callableFunction.call(this)))
+    onTick = () => {
+        if (this.allowTick) {
+            this._stateCallables.get(States.SINGLE_TICK)?.forEach((callableFunction => callableFunction.call(this)))
+            this.allowTick = false
+        }
+    }
 
     /* FRAME TIME */
     private _getPerformanceTime = (diff: number = 0) => performance.timeOrigin + performance.now() - (diff > 0 ? diff : 0)

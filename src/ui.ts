@@ -45,7 +45,7 @@ export const ui = () => {
 
 const initializeControlButtons = () => {
     controlTickButtonElement.onclick = () => {
-        ConwayGame.allowTick = true
+        ConwayGame.allowTick = true // TODO this should probably stay inside Engine
         ConwayGame.setState(States.SINGLE_TICK)
     }
 

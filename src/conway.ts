@@ -77,14 +77,7 @@ class Conway extends CellEngine {
         })
 
         this.runOnState(States.SINGLE_TICK, () => {
-            this.draw()
-
-            if (!this.allowTick) {
-                return
-            }
-            
             this.onRunning()
-            this.allowTick = false
         })
     }
     
@@ -152,6 +145,9 @@ class Conway extends CellEngine {
     }
 
     public setHeightOffset = (offset: number): this => {
+        this.runOnState(States.SINGLE_TICK, () => {
+            console.log('run new per one tick after resizing once')
+        })
         this.heightOffset = offset
         return this
     }
