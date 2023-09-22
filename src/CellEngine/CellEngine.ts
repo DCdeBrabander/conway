@@ -1,6 +1,8 @@
 import { Color } from "./Color"
 export { CellMath } from "./Math"
 
+export const MAX_FPS: number = 60
+
 export type Dimension = {
     width: number,
     height: number
@@ -17,7 +19,9 @@ export enum States {
     SINGLE_TICK = "Singe tick",
 }
 
-const MAX_FPS: number = 60
+export type CellConfig = { 
+    fpsLimit?: number
+}
 
 /**
  * our underlying draw and (future) p2p/web traffic logic
@@ -32,12 +36,13 @@ export class CellEngine {
 
     private _stateCallables: Map<States, Function[]> = new Map()
 
+    private _fps: number = MAX_FPS
     public get fps(): number {
         return this._fps
     }
     public set fps(value: number) {
         if (value > MAX_FPS) {
-            console.info("Maximum FPS reached: " + MAX_FPS)
+            console.info("Maximum FPS is: " + MAX_FPS)
             this._fps = MAX_FPS
         } else {
             this._fps = value
@@ -53,7 +58,7 @@ export class CellEngine {
         this._allowTick = value
     }
 
-    constructor (private canvas: HTMLCanvasElement, private _fps: number) {
+    constructor (private canvas: HTMLCanvasElement) {
         this.context2d = canvas.getContext("2d")!
     }
 
@@ -62,8 +67,8 @@ export class CellEngine {
     setState = (state: States) => this.gameState = state
 
     /* GAME LOOP */
-    run = async (fps: number = 60) => {
-        const timeToRun = await this.measureTime(() => {
+    run = async () => {
+        const timeToRun = await this.measureGameTime(() => {
             switch (this.getState()) {
                 case States.RUNNING: 
                     this.onRunning()
@@ -80,7 +85,7 @@ export class CellEngine {
 
         setTimeout(() => {
             requestAnimationFrame(this.run)
-        }, 1000 / fps)
+        }, 1000 / this.fps)
     }
 
     pause = (toggle: boolean = false) => {
@@ -113,7 +118,7 @@ export class CellEngine {
     getCurrentFrameTime = () => this._getPerformanceTime()
     getLastFrameTime = () => this.elapsedFrameTime
 
-    measureTime = async (callable: Function) => {
+    measureGameTime = async (callable: Function): Promise<number> => {
         const startFrameTime = this._getPerformanceTime()
         await callable.call(this)
         return this._getPerformanceTime(startFrameTime)

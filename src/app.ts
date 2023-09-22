@@ -8,13 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
     CanvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 
     // Conway Stuff
-    const CELL_SIZE = 15
-    const CONWAY_FPS = 10
+    const CELL_SIZE = 20
+    const CONWAY_FPS = 15
 
     // Let's go ;-)
-    ConwayGame = new Conway(CanvasElement, CELL_SIZE, CONWAY_FPS)
+    ConwayGame = new Conway(CanvasElement, { fpsLimit: CONWAY_FPS, cellSize: CELL_SIZE })
         .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
-        .init()
+        .initialize()
 
     // UI stuff
     ui()

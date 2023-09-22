@@ -1,11 +1,13 @@
+import { CellConfig, CellEngine, CellMath, Coordinate, Dimension, MAX_FPS, States } from "./CellEngine/CellEngine"
 import { Color } from "./CellEngine/Color"
-import { CellEngine, CellMath, Coordinate, States } from "./CellEngine/CellEngine"
-import Cell from "./cell"
 import { GetPattern, Patterns } from "./patterns/index"
+import Cell from "./cell"
 
+const MAX_CELL_SIZE: number = 100 // Let's keep things under control
 
-// Let's keep things under control
-const MAX_CELL_SIZE: number = 100
+type ConwayConfig = CellConfig & {
+    cellSize?: number
+}
 
 class Conway extends CellEngine {
     private theme = {
@@ -22,10 +24,11 @@ class Conway extends CellEngine {
  
     private currentPreviewPattern: Patterns = Patterns.CELL
 
-    private previousCanvasSize: { width: number, height: number } = { width: 0, height: 0 }
+    private previousCanvasSize: Dimension = { width: 0, height: 0 }
     private heightOffset: number = 0
-    private resizeTimeout: NodeJS.Timeout
+    private resizeTimeout: NodeJS.Timeout = setTimeout(() => {})
 
+    private _cellSize:number = 10
     public get cellSize(): number {
         return this._cellSize
     }
@@ -40,25 +43,9 @@ class Conway extends CellEngine {
 
     constructor (
         canvasElement: HTMLCanvasElement, 
-        private _cellSize: number = 10, 
-        fps: number = 10
-    ) {
-        super(canvasElement, fps)
-        this.resizeTimeout = setTimeout(() => {})
-        CellMath.setNearestRounding(this._cellSize)
+        private instanceConfig: ConwayConfig = { cellSize: MAX_CELL_SIZE, fpsLimit: MAX_FPS }) {
+        super(canvasElement)
         this.setup()
-        return this
-    }
-
-    public init = () => {
-        this.setState(States.PAUSED)
-
-        this._updateConwayGridSize(window.innerWidth, window.innerHeight)
-
-        // Create all cell instances for every grid coordinate
-        this.grid = this._getNewGrid()
-        this.run()
-
         return this
     }
 
@@ -67,6 +54,8 @@ class Conway extends CellEngine {
      * TODO: introduce custom game-states
      */
     public setup = () => {
+        CellMath.setNearestRounding(this.instanceConfig.cellSize ?? MAX_CELL_SIZE)
+        
         this.runOnState(States.RUNNING, () => {
             this._updateCellsInGrid()
             this.draw()
@@ -79,6 +68,21 @@ class Conway extends CellEngine {
         this.runOnState(States.SINGLE_TICK, () => {
             this.onRunning()
         })
+    }
+
+    public initialize = (config: ConwayConfig = {}): this => {
+        this.setState(States.PAUSED)
+
+        this.cellSize = config.cellSize ?? this.instanceConfig.cellSize ?? MAX_CELL_SIZE
+        this.fps = config.fpsLimit ?? this.instanceConfig.fpsLimit ?? MAX_FPS
+
+        this._setCanvasSize(window.innerWidth, window.innerHeight)
+
+        this.grid = this._getNewGrid()
+
+        this.run()
+
+        return this
     }
     
     /**
@@ -95,7 +99,7 @@ class Conway extends CellEngine {
     public onResize = () => {
         clearTimeout(this.resizeTimeout)
         this.resizeTimeout = setTimeout(() => {
-            this._updateConwayGridSize(window.innerWidth, window.innerHeight)
+            this._setCanvasSize(window.innerWidth, window.innerHeight)
 
             // Calculate difference in grids
             this._resizeGrid()
@@ -145,14 +149,11 @@ class Conway extends CellEngine {
     }
 
     public setHeightOffset = (offset: number): this => {
-        this.runOnState(States.SINGLE_TICK, () => {
-            console.log('run new per one tick after resizing once')
-        })
         this.heightOffset = offset
         return this
     }
 
-    private _updateConwayGridSize = (newWidth: number, newHeight: number): this => {
+    private _setCanvasSize = (newWidth: number, newHeight: number): this => {
         // Keep track of current size in case of resizing
         // we need this to correctly update grid without resetting it
         const { width, height } = this.getCanvasSize()
@@ -279,10 +280,10 @@ class Conway extends CellEngine {
         // Support increased width/height
         if (increasedWidth || increasedHeight) {
             for (let x = 0; x <= canvasWidth!; x += this.cellSize) {
-                for (let y = 0; y <= canvasHeight!; y += this.cellSize) {  
-                    if (typeof grid[x] === "undefined") {
-                        grid[x] = []
-                    }   
+                if (typeof grid[x] === "undefined") {
+                    grid[x] = []
+                } 
+                for (let y = 0; y <= canvasHeight!; y += this.cellSize) {    
                     if (typeof grid[x][y] === "undefined") {
                         grid[x][y] = new Cell(x, y, false)
                     }
