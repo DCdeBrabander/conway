@@ -1,10 +1,11 @@
+import Point from "./CellEngine/Point"
+
 class Cell {
     constructor (
-        public x: number = 0, 
-        public y: number = 0, 
+        public point: Point = new Point(0, 0),
+        public size: number = 0,
         public alive: boolean = true,
         public example: boolean = false,
-        public size: number = 0,
         public aliveNeighbours: number = 0
     ) {}
 

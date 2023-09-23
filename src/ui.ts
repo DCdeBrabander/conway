@@ -59,12 +59,12 @@ const initializeMouseListener = () => {
     const canvasElement = ConwayGame.getCanvas()
 
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-        const { x, y } = getCorrectedMouseCoordinates(event, canvasElement)
+        const { x, y } = ConwayGame.getCorrectedMouseCoordinates(event)
         ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
 
     canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
-        const { x, y } = getCorrectedMouseCoordinates(event, canvasElement)
+        const { x, y } = ConwayGame.getCorrectedMouseCoordinates(event)
         ConwayGame.showPatternPreview(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
 
