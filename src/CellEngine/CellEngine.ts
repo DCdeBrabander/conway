@@ -1,16 +1,15 @@
-import { Color } from "./Color"
+export { Color } from "./Color"
+export { Point } from "./Point"
 export { CellMath } from "./Math"
+
+import { Color } from "./Color"
+import Point from "./Point"
 
 export const MAX_FPS: number = 60
 
 export type Dimension = {
     width: number,
     height: number
-}
-
-export type Coordinate = {
-    x: number,
-    y: number
 }
 
 export enum States {
@@ -150,8 +149,40 @@ export class CellEngine {
     setFillColor = (color: Color | string) => this.context2d.fillStyle = color.toString()
     
     /* DRAW SHAPES */
+    static createPoint = (x: number, y: number): Point => {
+        return new Point(x, y)
+    }
+    static createIsometricPoint = (x: number, y: number) => {
+        return new Point(x, y, true) // TODO: probably refactor to child-class of Point: new IsometricPoint() or sumthn'
+    }
+
+
+    drawIsometricTile = (x: number, y: number, size: number) => {
+        const isoPoint = CellEngine.createIsometricPoint(x, y)
+        const color = new Color("#888")
+
+        const sizeX = size
+        const sizeY = size
+        const sizeZ = size
+
+        this.context2d.fillStyle = color.toString()
+        this.context2d.strokeStyle = color.getShade(-40)
+
+        this.context2d.beginPath()
+        this.context2d.moveTo(x, y - sizeZ)
+
+        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
+        this.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
+        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
+
+        this.context2d.closePath()
+        
+        this.context2d.stroke()
+        this.context2d.fill()
+    }
+
     drawLine = (startX:number, startY: number, endX:number, endY:number) => {
-        this.context2d.lineWidth = 1
+        this.context2d.lineWidth = 4
         this.context2d.beginPath()
         this.context2d.moveTo(startX, startY)
         this.context2d.lineTo(endX, endY)
@@ -162,5 +193,48 @@ export class CellEngine {
         this.context2d.fillRect(x, y, width, height)
     }
     
-    drawSquare = (x: number, y: number, size: number) => this.drawRectangle(x, y, size, size)
+    drawSquare = (x: number, y: number, size: number): void => this.drawRectangle(x, y, size, size)
+    
+
+    drawCube = (x:number, y:number, sizeX:number, sizeY:number, sizeZ:number, color: Color) => {
+        const mainColor = color
+        const leftColor = new Color(color.getShade(20))
+        const rightColor = new Color(color.getShade(-20))
+
+        // left face
+        this.context2d.beginPath();
+        this.context2d.moveTo(x, y);
+        this.context2d.lineTo(x - sizeX, y - sizeX * 0.5);
+        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5);
+        this.context2d.lineTo(x, y - sizeZ * 1);
+        this.context2d.closePath();
+        this.context2d.fillStyle = leftColor.toString()
+        this.context2d.strokeStyle = leftColor.getShade(20)
+        this.context2d.stroke();
+        this.context2d.fill();
+    
+        // right face
+        this.context2d.beginPath()
+        this.context2d.moveTo(x, y)
+        this.context2d.lineTo(x + sizeY, y - sizeY * 0.5)
+        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
+        this.context2d.lineTo(x, y - sizeZ * 1)
+        this.context2d.closePath()
+        this.context2d.fillStyle = rightColor.toString()
+        this.context2d.strokeStyle = rightColor.getShade(40)
+        this.context2d.stroke()
+        this.context2d.fill()
+    
+        // center face
+        this.context2d.beginPath()
+        this.context2d.moveTo(x, y - sizeZ)
+        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
+        this.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
+        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
+        this.context2d.closePath()
+        this.context2d.fillStyle = mainColor.toString()
+        this.context2d.strokeStyle = mainColor.getShade(-40)
+        this.context2d.stroke()
+        this.context2d.fill()
+    }
 }
