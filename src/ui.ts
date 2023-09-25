@@ -59,13 +59,15 @@ const initializeMouseListener = () => {
     const canvasElement = ConwayGame.getCanvas()
 
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-        const { x, y } = ConwayGame.getCorrectedMouseCoordinates(event)
-        ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
+        const currentMousePoint = ConwayGame.getCurrentPointOfMouse(event)
+        ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), currentMousePoint)
     }, false)
 
     canvasElement.addEventListener('mousemove', (event: MouseEvent) => {
-        const { x, y } = ConwayGame.getCorrectedMouseCoordinates(event)
-        ConwayGame.showPatternPreview(ConwayGame.getCurrentPreviewPattern(), x, y)
+        ConwayGame.showPatternPreview(
+            ConwayGame.getCurrentPreviewPattern(),
+            ConwayGame.getCurrentPointOfMouse(event)
+        )
     }, false)
 
     canvasElement.addEventListener('mouseleave', () => {
@@ -138,7 +140,7 @@ const updateUiElementsByGameState = () => {
     }
 }
 
-const getCorrectedMouseCoordinates = (mouseEvent: MouseEvent, canvasElement: HTMLCanvasElement) => ({
+const getCurrentPointOfMouse = (mouseEvent: MouseEvent, canvasElement: HTMLCanvasElement) => ({
     x: mouseEvent.clientX - canvasElement.offsetLeft,
     y: mouseEvent.clientY - canvasElement.offsetTop
 })

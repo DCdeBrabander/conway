@@ -2,28 +2,35 @@
  * 2D Point
  */
 export class Point {
-    constructor(public x: number, public y: number, public isometric: boolean = false) {
-        if (isometric) {
-            const isometricPoint = this.toIsometric()
-            this.x = isometricPoint.x
-            this.y = isometricPoint.y
-        }
+    constructor(public x: number, public y: number) {}
+
+    
+
+    toString = () => `[${this.x}, ${this.y}]`
+
+    // Standard isometric (2:1 ratio) projection
+    // Basically any 'isometric' implementation can be put here 
+    // IF toCartesion is opposite
+    toIsometric = (): Point => {
+        return Point.convertToIsometric(this.x, this.y)
     }
 
     // 2D screenspace
     toCartesian = (): Point => {
-        return new Point(
-            (2 * this.y + this.x) / 2, 
-            (2 * this.y - this.x) / 2
+        return Point.convertToCartesian(this.x, this.y)
+    }
+
+    static convertToIsometric = (x: number, y: number): Point => {
+        return new Point (
+            x - y,
+            (x + y) / 2
         )
     }
 
-    // Standard isometric
-    // 2:1 ratio projection
-    toIsometric = (): Point => {
+    static convertToCartesian =  (x: number, y: number): Point => {
         return new Point(
-            this.x - this.y,
-            (this.x + this.y) / 2
+            (2 * y + x) / 2, 
+            (2 * y - x) / 2
         )
     }
 }

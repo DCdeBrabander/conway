@@ -4,8 +4,14 @@ export { CellMath } from "./Math"
 
 import { Color } from "./Color"
 import Point from "./Point"
+import { Shape } from "./Shape/Shape"
 
 export const MAX_FPS: number = 60
+
+export enum DrawMode {
+    ISOMETRIC = "isometric",
+    DEFAULT = "default"
+}
 
 export type Dimension = {
     width: number,
@@ -19,7 +25,8 @@ export enum States {
 }
 
 export type CellConfig = { 
-    fpsLimit?: number
+    fpsLimit?: number,
+    drawMode?: DrawMode
 }
 
 /**
@@ -27,10 +34,10 @@ export type CellConfig = {
  * goal: ConwayGame should be main bootstrap file and interface between human/UI and logic
  */
 export class CellEngine {
-    private context2d: CanvasRenderingContext2D
+    static context2d: CanvasRenderingContext2D
     private gameState: States = States.PAUSED
+    private drawMode: DrawMode = DrawMode.DEFAULT
 
-    private startFrameTime: number = 0
     private elapsedFrameTime: number = 0
 
     private _stateCallables: Map<States, Function[]> = new Map()
@@ -57,16 +64,31 @@ export class CellEngine {
         this._allowTick = value
     }
 
-    constructor (private canvas: HTMLCanvasElement) {
-        this.context2d = canvas.getContext("2d")!
+    private shapes: Shape[] = []
+
+    constructor (private canvas: HTMLCanvasElement, private config?: CellConfig) {
+        CellEngine.context2d = canvas.getContext("2d")!
+        this.drawMode = config?.drawMode ?? this.drawMode
+
+        console.log(this.drawMode)
+        if (this.drawMode == DrawMode.ISOMETRIC) {
+            let angle1 = 30
+            let angle2 = 30 
+            var cs = Math.cos(angle1), sn = Math.sin(angle1);
+            var h = Math.cos(angle2);
+            var a = 100*cs, b = -100*sn, c = 200;
+            var d = h*100*sn, e = h*100*cs, f = 200;
+            this.getContext().setTransform(a, d, b, e, c, f);
+        }
+        this.loop()
     }
 
-    getContext = () => this.context2d
+    getContext = () => CellEngine.context2d
     getState = () => this.gameState
     setState = (state: States) => this.gameState = state
 
     /* GAME LOOP */
-    run = async () => {
+    private loop = async () => {
         const timeToRun = await this.measureGameTime(() => {
             switch (this.getState()) {
                 case States.RUNNING: 
@@ -79,12 +101,14 @@ export class CellEngine {
                     this.onTick()
                     break
             }
+
+            this.draw()
+
+            setTimeout(() => {
+                requestAnimationFrame(this.loop)
+            }, 1000 / this.fps)
         })
         this.elapsedFrameTime = timeToRun
-
-        setTimeout(() => {
-            requestAnimationFrame(this.run)
-        }, 1000 / this.fps)
     }
 
     pause = (toggle: boolean = false) => {
@@ -103,13 +127,39 @@ export class CellEngine {
         this._stateCallables.has(state) ? this._stateCallables.get(state)?.push(func) : this._stateCallables.set(state, [func])
     }
 
-    onRunning = () => this._stateCallables.get(States.RUNNING)?.forEach(callableFunction => callableFunction.call(this))
-    onPaused = () => this._stateCallables.get(States.PAUSED)?.forEach((callableFunction => callableFunction.call(this)))
+    onRunning = () => {
+        this._stateCallables.get(States.RUNNING)
+            ?.forEach(callableFunction => 
+                callableFunction.call(this)
+            )
+    }
+    onPaused = () => {
+        this._stateCallables.get(States.PAUSED)
+            ?.forEach((callableFunction => 
+                callableFunction.call(this)
+            )
+        )
+    }
     onTick = () => {
         if (this.allowTick) {
             this._stateCallables.get(States.SINGLE_TICK)?.forEach((callableFunction => callableFunction.call(this)))
             this.allowTick = false
         }
+    }
+
+    draw = () => {
+        this.getContext().save()
+        this.clearCanvas()
+
+        // TODO order shapes by Z value
+        // TODO while loop? OR offscreen-canvas
+
+        for (let s = 0; s <= this.shapes.length - 1; s++) {
+            // console.log(s, this.shapes[s] ?? "?")
+            this.shapes[s].draw()
+        }
+
+        this.getContext().restore()
     }
 
     /* FRAME TIME */
@@ -128,13 +178,13 @@ export class CellEngine {
     isPaused = () => this.getState() == States.PAUSED
 
     /* CANVAS */
-    clearCanvas = () => this.context2d.clearRect(0, 0, this.canvas.width, this.canvas.height)
+    clearCanvas = () => CellEngine.context2d.clearRect(0, 0, this.canvas.width, this.canvas.height)
     getCanvas = () => this.canvas
     getCanvasSize = (): Dimension => ({ width: this.canvas.width, height: this.canvas.height })
 
     setCanvasBackground = (color: Color) => {
         this.setFillColor(color)
-        this.context2d.fillRect(0, 0, this.canvas.width, this.canvas.height)
+        CellEngine.context2d.fillRect(0, 0, this.canvas.width, this.canvas.height)
     }
     setCanvasSize = (width: number, height: number): this => {
         this.canvas.style.width = width + "px"
@@ -145,96 +195,52 @@ export class CellEngine {
     }
 
     /* SET COLOR */
-    setStrokeColor = (color: Color | string) => this.context2d.strokeStyle = color.toString()
-    setFillColor = (color: Color | string) => this.context2d.fillStyle = color.toString()
+    setStrokeColor = (color: Color | string) => CellEngine.context2d.strokeStyle = color.toString()
+    setFillColor = (color: Color | string) => CellEngine.context2d.fillStyle = color.toString()
     
     /* DRAW SHAPES */
     static createPoint = (x: number, y: number): Point => {
         return new Point(x, y)
     }
     static createIsometricPoint = (x: number, y: number) => {
-        return new Point(x, y, true) // TODO: probably refactor to child-class of Point: new IsometricPoint() or sumthn'
+        return new Point(x, y).toIsometric() // TODO: probably refactor to child-class of Point: new IsometricPoint() or sumthn'
     }
 
+    addDrawable = (shape: Shape) => {
+        this.shapes.push(shape)
+    }
 
-    drawIsometricTile = (x: number, y: number, size: number) => {
-        const isoPoint = CellEngine.createIsometricPoint(x, y)
-        const color = new Color("#888")
-
+    drawIsometricTile = (point: Point, size: number, color: Color) => {    
         const sizeX = size
         const sizeY = size
         const sizeZ = size
-
-        this.context2d.fillStyle = color.toString()
-        this.context2d.strokeStyle = color.getShade(-40)
-
-        this.context2d.beginPath()
-        this.context2d.moveTo(x, y - sizeZ)
-
-        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
-        this.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
-        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
-
-        this.context2d.closePath()
         
-        this.context2d.stroke()
-        this.context2d.fill()
+        // console.log('drawIsometricTile', point.isometric)
+
+        const { x, y } = point
+
+        CellEngine.context2d.fillStyle = color.toString()
+        CellEngine.context2d.strokeStyle = color.getShade(-40)
+
+        CellEngine.context2d.beginPath()
+        CellEngine.context2d.moveTo(x, y - sizeZ)
+
+        CellEngine.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
+        CellEngine.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
+        CellEngine.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
+
+        CellEngine.context2d.closePath()
+        CellEngine.context2d.stroke()
+
+        CellEngine.context2d.fillStyle = color.toString()
+        CellEngine.context2d.fill()
     }
 
     drawLine = (startX:number, startY: number, endX:number, endY:number) => {
-        this.context2d.lineWidth = 4
-        this.context2d.beginPath()
-        this.context2d.moveTo(startX, startY)
-        this.context2d.lineTo(endX, endY)
-        this.context2d.stroke()
-    }
-    
-    drawRectangle = (x: number, y: number, width: number, height: number) => {
-        this.context2d.fillRect(x, y, width, height)
-    }
-    
-    drawSquare = (x: number, y: number, size: number): void => this.drawRectangle(x, y, size, size)
-    
-
-    drawCube = (x:number, y:number, sizeX:number, sizeY:number, sizeZ:number, color: Color) => {
-        const mainColor = color
-        const leftColor = new Color(color.getShade(20))
-        const rightColor = new Color(color.getShade(-20))
-
-        // left face
-        this.context2d.beginPath();
-        this.context2d.moveTo(x, y);
-        this.context2d.lineTo(x - sizeX, y - sizeX * 0.5);
-        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5);
-        this.context2d.lineTo(x, y - sizeZ * 1);
-        this.context2d.closePath();
-        this.context2d.fillStyle = leftColor.toString()
-        this.context2d.strokeStyle = leftColor.getShade(20)
-        this.context2d.stroke();
-        this.context2d.fill();
-    
-        // right face
-        this.context2d.beginPath()
-        this.context2d.moveTo(x, y)
-        this.context2d.lineTo(x + sizeY, y - sizeY * 0.5)
-        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
-        this.context2d.lineTo(x, y - sizeZ * 1)
-        this.context2d.closePath()
-        this.context2d.fillStyle = rightColor.toString()
-        this.context2d.strokeStyle = rightColor.getShade(40)
-        this.context2d.stroke()
-        this.context2d.fill()
-    
-        // center face
-        this.context2d.beginPath()
-        this.context2d.moveTo(x, y - sizeZ)
-        this.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
-        this.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
-        this.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
-        this.context2d.closePath()
-        this.context2d.fillStyle = mainColor.toString()
-        this.context2d.strokeStyle = mainColor.getShade(-40)
-        this.context2d.stroke()
-        this.context2d.fill()
+        CellEngine.context2d.lineWidth = 2
+        CellEngine.context2d.beginPath()
+        CellEngine.context2d.moveTo(startX, startY)
+        CellEngine.context2d.lineTo(endX, endY)
+        CellEngine.context2d.stroke()
     }
 }

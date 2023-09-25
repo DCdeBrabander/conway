@@ -10,7 +10,9 @@ import {
 } from "./CellEngine/CellEngine"
 
 import { GetPattern, Patterns } from "./patterns/index"
-import Cell from "./cell"
+import Cell from "./Conway/Cell"
+import Square from "./CellEngine/Shape/Square"
+import Grid from "./Conway/Grid"
 
 const MAX_CELL_SIZE: number = 100 // Let's keep things under control
 
@@ -18,14 +20,7 @@ type ConwayConfig = CellConfig & {
     cellSize?: number
 }
 
-enum Mode {
-    ISOMETRIC = "isometric",
-    DEFAULT = "default"
-}
-
 class Conway extends CellEngine {
-    private currentMode: Mode = Mode.DEFAULT
-
     private theme = {
         grid: new Color("#888"),
         cell: {
@@ -35,9 +30,10 @@ class Conway extends CellEngine {
         background: new Color("#222")
     }
     
-    private grid: Cell[][] = []
+    private gridCells: Cell[][] = []
     private previewCells: Cell[][] = []
- 
+    private grid: Grid = null
+
     private currentPreviewPattern: Patterns = Patterns.CELL
 
     private previousCanvasSize: Dimension = { width: 0, height: 0 }
@@ -62,6 +58,7 @@ class Conway extends CellEngine {
         private instanceConfig: ConwayConfig = { cellSize: MAX_CELL_SIZE, fpsLimit: MAX_FPS }
     ) {
         super(canvasElement)
+        this.grid = new Grid(new Point(0,0), new Point(0,0), this._cellSize)
         this.setup()
         return this
     }
@@ -95,9 +92,16 @@ class Conway extends CellEngine {
 
         this._setCanvasSize(window.innerWidth, window.innerHeight)
 
-        this.grid = this._getNewGrid()
+        const { width, height } = this.getCanvasSize()
 
-        this.run()
+        this.grid = new Grid(
+            new Point(0, 0), // start x,y
+            new Point(width, height), // end x,y
+            this._cellSize,
+            { lineWidth: 2 }
+        )
+
+        this.gridCells = this._getNewGrid()
 
         return this
     }
@@ -108,35 +112,19 @@ class Conway extends CellEngine {
     public draw = () => {
         this.clearCanvas()
         this.setCanvasBackground(this.theme.background)
-
-        switch (this.currentMode) {
-            case Mode.DEFAULT:
-                this._drawPreviewCells()
-                this._drawLivingCells()
-                this._drawGrid()
-                break
-            case Mode.ISOMETRIC:
-                this._drawGrid()
-                this._drawPreviewCells()
-                this._drawLivingCells()
-                break;
-        }
+        this._drawPreviewCells()
+        this._drawLivingCells()
+        this._drawGrid()
     }
 
-    public getCorrectedMouseCoordinates = (mouseEvent: MouseEvent): Point => {
-        console.log(mouseEvent.clientX, mouseEvent.clientY)
+    public getCurrentPointOfMouse = (mouseEvent: MouseEvent): Point => {
+        const canvas = this.getCanvas()
+        const { top, left } = canvas.getBoundingClientRect()
 
-        const point = new Point(
-            CellMath.roundToNearest(mouseEvent.clientX - this.getCanvas().offsetLeft),
-            CellMath.roundToNearest(mouseEvent.clientY - this.getCanvas().offsetTop)
+        return new Point(
+           mouseEvent.clientX - left,
+           mouseEvent.clientY - top
         )
-
-        if (this.currentMode == Mode.ISOMETRIC) {
-            return point.toIsometric()
-            
-        }
-        
-        return point
     }
 
     public onResize = () => {
@@ -153,28 +141,27 @@ class Conway extends CellEngine {
 
     public insertPattern = (
         patternType: Patterns,
-        currentGridX: number,
-        currentGridY: number,
+        insertAtPoint: Point,
         example: boolean = false
     ): void => {
         if (!example && patternType == Patterns.CELL) {
-            this.toggleCellAtCoordinate(currentGridX, currentGridY)
+            this.toggleCellAtCoordinate(insertAtPoint)
             return
         }
-        this._insertPattern(patternType, currentGridX, currentGridY, example)
+        this._insertPattern(patternType, insertAtPoint, example)
     }
 
-    public showPatternPreview = (patternType: Patterns, currentGridX: number, currentGridY: number) => 
-        this.insertPattern(patternType, currentGridX, currentGridY, true)
+    public showPatternPreview = (patternType: Patterns, mousePoint: Point) => 
+        this.insertPattern(patternType, mousePoint, true)
 
     public resetPatternPreview = () => this.previewCells = this._getNewGrid()
 
-    public toggleCellAtCoordinate = (x: number, y: number): this => {
-        const roundedX = CellMath.roundToNearest(x)
-        const roundedY = CellMath.roundToNearest(y)
+    public toggleCellAtCoordinate = (point: Point): this => {
+        const roundedX = CellMath.roundToNearest(point.x)
+        const roundedY = CellMath.roundToNearest(point.y)
         const cell = this._getCellAt(roundedX, roundedY)
 
-        if (!this._getCellAt(roundedX, roundedY)) {
+        if (!cell) {
             return this
         }
 
@@ -216,51 +203,20 @@ class Conway extends CellEngine {
         relevantCells.forEach((column, x_index) => {
             column.forEach((cell, y_index) => {
                 // Update counts in 'current' grid to stay in sync
-                this.grid[x_index][y_index].setAliveNeighbours(
+                this.gridCells[x_index][y_index].setAliveNeighbours(
                     this._countAliveNeighboursForCell(cell)
                 )
                 // Update new grid with updated state
                 newGrid[x_index][y_index].alive = 
-                    this._isCellStillAlive(this.grid[x_index][y_index])
+                    this._isCellStillAlive(this.gridCells[x_index][y_index])
             }) 
         })
-        this.grid = newGrid
+        this.gridCells = newGrid
     }
 
     private _drawGrid = () => {
         this.setStrokeColor(this.theme.grid)
-        const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize()
-
-        // if ISO:
-        if (this.currentMode == Mode.ISOMETRIC) {
-
-            const xOffset = (this.cellSize * 2)
-            const yOffset = (this.cellSize / 2)
-
-            for (let x = 0; x <= canvasWidth; x += xOffset) {
-                for (let y = 0; y <= canvasHeight; y += yOffset) {
-                    // For every 'row down', offset tiles?
-                    const fixedCartX = y % this.cellSize
-                        ? x + this.cellSize
-                        : x
-
-                    const fixedCartY = y
-
-                    this.drawIsometricTile(fixedCartX, fixedCartY, this._cellSize)
-                }
-            }
-        // TODO use this.grid again for easier toggling between NORMAL and ISOMETRIC
-        } else {
-            // Draw for every 'column' (X) from top to bottom
-            for (let x = 0; x <= canvasWidth; x += this.cellSize) {
-                this.drawLine(x, 0, x, canvasHeight)
-            }
-
-            // Draw for every 'row' (Y) from left to right
-            for (let y = 0; y <= canvasHeight; y += this.cellSize) {
-                this.drawLine(0, y, canvasWidth, y)
-            }
-        }
+        this.grid.draw()
     }
 
     private _drawPreviewCells = () => {
@@ -270,33 +226,25 @@ class Conway extends CellEngine {
     }
 
     private _drawLivingCells = () => {
-        this.grid.forEach((column: Cell[]) => {
+        this.gridCells.forEach((column: Cell[]) => {
             column.forEach((cell: Cell) => this._drawCell(cell))
         })
     }
 
     private _drawCell = (cell: Cell): void => {
-        const { alive: aliveColor, example: exampleColor } = this.theme.cell
-        if (cell.alive) {
-            this.setFillColor(aliveColor)
-        } else if (cell.example) {
-            this.setFillColor(exampleColor)
-        } else {
+        if (!cell.alive && !cell.preview) {
             return
         }
-        
-        if (this.currentMode == Mode.ISOMETRIC) {
-            this.drawCube(
-                cell.point.x,
-                cell.point.y,
-                this.cellSize,
-                this.cellSize,
-                this.cellSize,
-                new Color(cell.alive ? aliveColor.toString() : exampleColor.toString())
-            )
-        } else {
-            this.drawSquare(cell.point.x, cell.point.y, this.cellSize)
+                
+        if (cell.alive) {
+            cell.setColor(this.theme.cell.alive)
         }
+
+        if (cell.preview) {
+            cell.setColor(this.theme.cell.example)
+        }
+        
+        cell.draw()
     }
 
     private _findRelevantCellsForUpdate = (): Cell[][] => {
@@ -308,12 +256,12 @@ class Conway extends CellEngine {
         // but more performant
         for (let x = 0; x <= width; x += this.cellSize) {
             for (let y = 0; y <= height; y += this.cellSize) {
-                if (!this.grid[x][y].alive) {
+                if (!this.gridCells[x][y].alive) {
                     continue
                 }
 
                 // All cells around cell
-                for (const coordinate of this._getAllCellNeighbourCoordinates(this.grid[x][y])) {
+                for (const coordinate of this._getAllCellNeighbourCoordinates(this.gridCells[x][y])) {
                     if (!relevantCells[coordinate.x]) {
                         relevantCells[coordinate.x] = []
                     }
@@ -324,7 +272,7 @@ class Conway extends CellEngine {
                 }
 
                 // Current cell itself
-                relevantCells[x][y] = this.grid[x][y]                   
+                relevantCells[x][y] = this.gridCells[x][y]                   
             }
         }
 
@@ -335,56 +283,22 @@ class Conway extends CellEngine {
         let grid: Cell[][] = []
         const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize()
 
-
-        // if (this.currentMode == Mode.ISOMETRIC) {
-
-        //     const xOffset = (this.cellSize * 2)
-        //     const yOffset = (this.cellSize / 2)
-
-        //     for (let x = 0; x <= canvasWidth; x += xOffset) {
-        //         for (let y = 0; y <= canvasHeight; y += yOffset) {
-        //             // For every 'row down', offset tiles?
-        //             const fixedCartX =  y % this.cellSize
-        //                 ? x + this.cellSize
-        //                 : x
-                    
-        //                 const fixedCartY = y
-
-        //             if ( ! grid[fixedCartX]) {
-        //                 grid[fixedCartX] = []
-        //             }
-                    
-        //             const point = new Point(fixedCartX, fixedCartY, true)
-    
-        //             grid[fixedCartX][fixedCartY] = new Cell(
-        //                 point,
-        //                 this.cellSize,
-        //                 false
-        //             )
-        //         }
-        //     }
-    
-        //     return grid
-        // }
-
         for (let x = 0; x <= canvasWidth; x += this.cellSize) {
             grid[x] = []
             for (let y = 0; y <= canvasHeight; y += this.cellSize) {
-                const point = Mode.DEFAULT ? new Point(x, y) : new Point(x, y, true)
-
                 grid[x][y] = new Cell(
-                    point,
+                    new Point(x, y),
                     this.cellSize,
                     false
                 )
             }
         }
-
+        
         return grid
     }
 
     private _resizeGrid = () => {
-        let grid: Cell[][] = this.grid
+        let grid: Cell[][] = this.gridCells
 
         const { width: canvasWidth, height: canvasHeight } = this.getCanvasSize()
 
@@ -422,29 +336,32 @@ class Conway extends CellEngine {
             }
             console.info("Decreased size of grid")
         }
-        this.grid = grid
+        this.gridCells = grid
     }
 
-    private _getCellAt = (x: number, y: number): Cell => this.grid[x][y]
+    private _getCellAt = (x: number, y: number): Cell => {
+        return this.gridCells
+            [CellMath.roundToNearest(x)]
+            [CellMath.roundToNearest(y)]
+    }
 
     private _overflowPosition = (x: number, y: number): Point => {
-        const overflowedCoordinate = new Point(x, y )
-
         const { width, height } = this.getCanvasSize()
+        const newPoint = new Point(x, y )
 
         if (x < 0) {    
-            overflowedCoordinate.x = width - this.cellSize
+            newPoint.x = width - this.cellSize
         } else if (x >= width) {
-            overflowedCoordinate.x = 0
+            newPoint.x = 0
         }
 
         if (y < 0) {
-            overflowedCoordinate.y = height - this.cellSize
+            newPoint.y = height - this.cellSize
         } else if (y >= height) {
-            overflowedCoordinate.y = 0
+            newPoint.y = 0
         }
 
-        return overflowedCoordinate
+        return newPoint
     }
 
     private _isCellStillAlive = (cell: Cell): boolean => {
@@ -501,18 +418,17 @@ class Conway extends CellEngine {
     
     private _insertPattern = (
         patternType: Patterns,
-        currentGridX: number,
-        currentGridY: number,
-        example: boolean = false
-    ): void=> {
+        insertAtPoint: Point,
+        preview: boolean = false
+    ): void => {
         const pattern: number[][] = GetPattern(patternType)
         let grid: Cell[][] = []
 
-        if (example) {
+        if (preview) {
             this.previewCells = this._getNewGrid()
             grid = this.previewCells
         } else {
-            grid = this.grid
+            grid = this.gridCells
         }
 
         // Because aesthetic reasons:
@@ -527,10 +443,10 @@ class Conway extends CellEngine {
             row.forEach((showCell, previewX) => {
 
                 const insertAtX = CellMath.roundToNearest(
-                    ((previewX - offsetX) * this.cellSize) + currentGridX
+                    ((previewX - offsetX) * this.cellSize) + insertAtPoint.x
                 )
                 const insertAtY = CellMath.roundToNearest(
-                    ((previewY - offsetY) * this.cellSize) + currentGridY
+                    ((previewY - offsetY) * this.cellSize) + insertAtPoint.y
                 )
 
                 if (typeof grid[insertAtX][insertAtY] === "undefined" || ! grid[insertAtX][insertAtY]) {
@@ -541,15 +457,12 @@ class Conway extends CellEngine {
                     return
                 }
 
-                const cell = new Cell(
-                    new Point(insertAtX, insertAtY, Mode.ISOMETRIC == this.currentMode), 
+                grid[insertAtX][insertAtY] = new Cell(
+                    new Point(insertAtX, insertAtY), 
                     this.cellSize, 
-                    !example
+                    !preview,
+                    preview
                 )
-
-                cell.example = example
-                grid[insertAtX][insertAtY] = cell
-               
             })
         })
     }

@@ -1,4 +1,5 @@
 import Conway from "./conway"
+import Conway2 from "./conway2"
 import { ui } from "./ui"
 
 export let ConwayGame: Conway
@@ -15,6 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
     ConwayGame = new Conway(CanvasElement, { fpsLimit: CONWAY_FPS, cellSize: CELL_SIZE })
         .setHeightOffset(document.querySelector('#info')?.clientHeight ?? 0)
         .initialize()
+
+    // new Conway2(
+    //     CanvasElement, 
+    //     { heightOffset: document.querySelector('#info')?.clientHeight ?? 0 } 
+    // )
 
     // UI stuff
     ui()
