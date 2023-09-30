@@ -59,8 +59,8 @@ const initializeMouseListener = () => {
     const canvasElement = ConwayGame.getCanvas()
 
     canvasElement.addEventListener('mousedown', (event: MouseEvent) => {
-        const currentMousePoint = ConwayGame.getCurrentPointOfMouse(event)
-        ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), currentMousePoint)
+        const { x, y } = ConwayGame.getCurrentPointOfMouse(event)
+        ConwayGame.insertPattern(ConwayGame.getCurrentPreviewPattern(), x, y)
     }, false)
 
     canvasElement.addEventListener('mousemove', (event: MouseEvent) => {

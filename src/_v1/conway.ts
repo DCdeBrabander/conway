@@ -11,7 +11,6 @@ import {
 
 import { GetPattern, Patterns } from "./patterns/index"
 import Cell from "./Conway/Cell"
-import Square from "./CellEngine/Shape/Square"
 import Grid from "./Conway/Grid"
 
 const MAX_CELL_SIZE: number = 100 // Let's keep things under control
@@ -32,7 +31,7 @@ class Conway extends CellEngine {
     
     private gridCells: Cell[][] = []
     private previewCells: Cell[][] = []
-    private grid: Grid = null
+    private grid: Grid
 
     private currentPreviewPattern: Patterns = Patterns.CELL
 

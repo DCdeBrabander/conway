@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Conway's Game of Life</title>
+    <link href="dist/app.css" rel="stylesheet" />
+</head>
+<body>
+    
+    <header id="info">
+        <h1>Conway's Game Of Life <span>by DDB</span></h1>
+
+        <div id="state">
+            Game is 
+            <span>PAUSED</span>
+        </div>
+
+        <div id="fps">
+            <div id="target">Drawing at FPS: <span>0</span></div>
+            <div id="actual">Performance FPS: <span>0</span></div>
+        </div>
+
+        <div id="controls">
+            <div>
+                <button id="control-play">> Play</button>
+                <button id="control-tick">|> Tick</button>
+            </div>
+            <div id="patterns">
+                Insert <select></select>
+            </div>
+        </div>
+    </header>
+
+    <!-- This is where the magic happens -->
+    <canvas id="conway-canvas"></canvas>
+
+    <dialog id="help">
+        <h2>Shortcuts</h2>
+        <table>
+            <tr>
+                <td>[p]</td> <td>Pause</td>
+            </tr>
+            <tr>
+                <td>[space]</td> <td>Toggle State (Resume/Pause)</td>
+            </tr>
+            <tr>
+                <td>[h]</td> <td>Toggle this help dialog</td>
+            </tr>
+        </table>
+    </dialog>
+    <script src="./dist/app.js"></script>
+</body>
+</html>

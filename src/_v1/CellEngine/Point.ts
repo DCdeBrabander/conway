@@ -4,8 +4,6 @@
 export class Point {
     constructor(public x: number, public y: number) {}
 
-    
-
     toString = () => `[${this.x}, ${this.y}]`
 
     // Standard isometric (2:1 ratio) projection

@@ -37,6 +37,16 @@ class Rectangle implements Shape {
             CellEngine.context2d.stroke()
         }
     }
+
+    setFillColor = (color: Color): this => { 
+        this.fillColor = color
+        return this
+    }
+
+    setStrokeColor = (color: Color): this => { 
+        this.fillColor = color
+        return this
+    }
 }
 
 export default Rectangle

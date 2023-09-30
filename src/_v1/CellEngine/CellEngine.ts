@@ -69,16 +69,10 @@ export class CellEngine {
     constructor (private canvas: HTMLCanvasElement, private config?: CellConfig) {
         CellEngine.context2d = canvas.getContext("2d")!
         this.drawMode = config?.drawMode ?? this.drawMode
-
-        console.log(this.drawMode)
         if (this.drawMode == DrawMode.ISOMETRIC) {
-            let angle1 = 30
-            let angle2 = 30 
-            var cs = Math.cos(angle1), sn = Math.sin(angle1);
-            var h = Math.cos(angle2);
-            var a = 100*cs, b = -100*sn, c = 200;
-            var d = h*100*sn, e = h*100*cs, f = 200;
-            this.getContext().setTransform(a, d, b, e, c, f);
+            // CellEngine.context2d.translate(100, 100)
+            // CellEngine.context2d.scale(1, 0.5)
+            // CellEngine.context2d.rotate(45 * Math.PI /180)
         }
         this.loop()
     }
@@ -154,8 +148,9 @@ export class CellEngine {
         // TODO order shapes by Z value
         // TODO while loop? OR offscreen-canvas
 
+        this.getContext().save()
+        
         for (let s = 0; s <= this.shapes.length - 1; s++) {
-            // console.log(s, this.shapes[s] ?? "?")
             this.shapes[s].draw()
         }
 
@@ -179,7 +174,7 @@ export class CellEngine {
 
     /* CANVAS */
     clearCanvas = () => CellEngine.context2d.clearRect(0, 0, this.canvas.width, this.canvas.height)
-    getCanvas = () => this.canvas
+    getCanvas = (): HTMLCanvasElement => this.canvas
     getCanvasSize = (): Dimension => ({ width: this.canvas.width, height: this.canvas.height })
 
     setCanvasBackground = (color: Color) => {
@@ -199,48 +194,7 @@ export class CellEngine {
     setFillColor = (color: Color | string) => CellEngine.context2d.fillStyle = color.toString()
     
     /* DRAW SHAPES */
-    static createPoint = (x: number, y: number): Point => {
-        return new Point(x, y)
-    }
-    static createIsometricPoint = (x: number, y: number) => {
-        return new Point(x, y).toIsometric() // TODO: probably refactor to child-class of Point: new IsometricPoint() or sumthn'
-    }
-
-    addDrawable = (shape: Shape) => {
+    addShape = (shape: Shape) => {
         this.shapes.push(shape)
-    }
-
-    drawIsometricTile = (point: Point, size: number, color: Color) => {    
-        const sizeX = size
-        const sizeY = size
-        const sizeZ = size
-        
-        // console.log('drawIsometricTile', point.isometric)
-
-        const { x, y } = point
-
-        CellEngine.context2d.fillStyle = color.toString()
-        CellEngine.context2d.strokeStyle = color.getShade(-40)
-
-        CellEngine.context2d.beginPath()
-        CellEngine.context2d.moveTo(x, y - sizeZ)
-
-        CellEngine.context2d.lineTo(x - sizeX, y - sizeZ - sizeX * 0.5)
-        CellEngine.context2d.lineTo(x - sizeX + sizeY, y - sizeZ - (sizeX * 0.5 + sizeY * 0.5))
-        CellEngine.context2d.lineTo(x + sizeY, y - sizeZ - sizeY * 0.5)
-
-        CellEngine.context2d.closePath()
-        CellEngine.context2d.stroke()
-
-        CellEngine.context2d.fillStyle = color.toString()
-        CellEngine.context2d.fill()
-    }
-
-    drawLine = (startX:number, startY: number, endX:number, endY:number) => {
-        CellEngine.context2d.lineWidth = 2
-        CellEngine.context2d.beginPath()
-        CellEngine.context2d.moveTo(startX, startY)
-        CellEngine.context2d.lineTo(endX, endY)
-        CellEngine.context2d.stroke()
     }
 }
