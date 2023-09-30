@@ -1,4 +1,4 @@
-import { CellEngine, Color } from "../CellEngine";
+import { Color } from "../CellEngine";
 import { Point3D } from "../Point";
 import Shape from "./Shape";
 
@@ -12,14 +12,14 @@ class Cube extends Shape {
         this.dimension.height = size
     }
 
-    draw = (context?:CanvasRenderingContext2D) => {
+    draw = () => {
         const topColor = this.color.toString()
         const leftColor = this.color.getShade(20)
         const rightColor = this.color.getShade(-20)
 
         const strokeColor = this.highlightColor ? this.highlightColor.toString() : new Color("#AAAAAA").toString()
 
-        const ctx = context ?? CellEngine.context2d
+        const ctx = this.engineInstance?.getContext()!
 
         // Size of Cube
         const sizeX = this.dimension.width
@@ -82,8 +82,6 @@ class Cube extends Shape {
 
         // restore context state after drawing
         ctx.restore()
-
-        this.highlightColor = null
     }
 }
 

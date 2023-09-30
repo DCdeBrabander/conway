@@ -49,7 +49,8 @@ class SomeGame extends CellEngine {
             fpsLimit: 60
         }
     ) {
-        super(canvasElement, { fpsLimit: 5 })
+        super(canvasElement)
+        this.setConfig({ fpsLimit: this.instanceConfig.fpsLimit ?? 5})
         
         this.setCanvasSize(
             window.innerWidth,
@@ -107,8 +108,9 @@ class SomeGame extends CellEngine {
     }
 
     loadAssets = () => {
-        this.addShape(this.player!, DrawMode.ISOMETRIC)
         this.addShape(this.level, DrawMode.ISOMETRIC)
+        this.addShape(this.player!, DrawMode.ISOMETRIC)
+
         this.addShape(this.mouseTile)
     }
 

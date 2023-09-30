@@ -1,3 +1,4 @@
+import { Color } from "./Color";
 import { Point3D } from "./Point";
 import Shape from "./Shape/Shape";
 
@@ -16,6 +17,7 @@ export class Player extends Shape {
         this.position = asset.position
         this.dimension = asset.dimension
 
+        this.asset.engineInstance = this.engineInstance
         this.asset = asset.show()
 
         this.canCollide = true
@@ -25,10 +27,12 @@ export class Player extends Shape {
 
     update = () => {
         this.findNeighbours()?.forEach((neighbourShape: Shape) => {
+            neighbourShape.highlightColor = new Color("#00FF00")
             if (this.isPointCollidingWith(this.nextPosition, neighbourShape)) {
                 console.log("YES")
             }
         })
+
         // Player instance position is not (yet?) same as the asset (visual/shape) position
         this.updatePosition(this.nextPosition)
         this.asset.updatePosition(this.nextPosition)
@@ -36,9 +40,12 @@ export class Player extends Shape {
         this.updatable = false
     }
 
-
-
-    draw = () => this.asset.draw()
+    draw = () => { 
+        if (! this.asset.engineInstance ) {
+            this.asset.engineInstance = this.engineInstance
+        }
+        this.asset.draw()
+    }
 
     bindKeyListener() {
         window.addEventListener('keydown', (event: KeyboardEvent) => {

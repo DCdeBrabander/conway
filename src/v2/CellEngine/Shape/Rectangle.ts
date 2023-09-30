@@ -1,42 +1,31 @@
-import { CellEngine, Color, Dimension, Point } from "../CellEngine"
+import { Color } from "../CellEngine"
 import { Shape } from "./Shape"
 
 class Rectangle extends Shape {
-    constructor(
-        private point: Point,
-        private dimension: Dimension,
-        private fillColor?: Color,
-        private strokeColor?: Color
-    ) {
-        super()
-    }
+    private fillColor: Color = new Color("#FFFFFF")
+    private strokeColor: Color = new Color("#000000")
 
-    draw(){
-        //    CellEngine.context2d.fillRect(
-        //         this.point.x, 
-        //         this.point.y, 
-        //         this.dimension.width, 
-        //         this.dimension.height
-        //     )
+    draw = () => {
+        const ctx = this.engineInstance?.getContext()!
 
-        CellEngine.context2d.beginPath()
+        ctx.beginPath()
       
-        CellEngine.context2d.rect(
-            this.point.x,
-            this.point.y, 
+        ctx.rect(
+            this.position.x,
+            this.position.y, 
             this.dimension.width,
             this.dimension.height
         )
 
         if (this.fillColor) {
-            CellEngine.context2d.fillStyle = this.fillColor.toString()
-            CellEngine.context2d.fill()
+            ctx.fillStyle = this.fillColor.toString()
+            ctx.fill()
         }
 
         if (this.strokeColor) {
-            CellEngine.context2d.lineWidth = 2
-            CellEngine.context2d.strokeStyle = this.strokeColor.toString()
-            CellEngine.context2d.stroke()
+            ctx.lineWidth = 2
+            ctx.strokeStyle = this.strokeColor.toString()
+            ctx.stroke()
         }
     }
 
@@ -46,7 +35,7 @@ class Rectangle extends Shape {
     }
 
     setStrokeColor = (color: Color): this => { 
-        this.fillColor = color
+        this.strokeColor = color
         return this
     }
 }

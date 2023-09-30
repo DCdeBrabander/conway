@@ -1,4 +1,4 @@
-import { CellEngine, Color, Point } from "../CellEngine"
+import CellEngine, { Color, Point } from "../CellEngine"
 import { Shape } from "./Shape"
 
 class Cube extends Shape {

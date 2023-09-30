@@ -17,28 +17,20 @@ class IsometricTile extends Shape {
 
     draw = () => {
         const gapSize = this.styleConfig.gapSize
+        const ctx = this.engineInstance?.getContext()!
 
-        // const baseLine = new Point(this.point.x, this.point.y).toIsometric()
-        // Math.floor(this.point.x - gapSize + gapSize),
-        // Math.floor(this.point.y - gapSize * 2)
-        
-        // Math.floor(this.point.x + gapSize),
-        // Math.floor(this.point.y - gapSize - gapSize * 0.5)  
-
-        
         if (this.styleConfig.fillStyle) {
-            CellEngine.context2d.fillStyle = this.styleConfig.fillStyle
+            ctx.fillStyle = this.styleConfig.fillStyle
         }
         if (this.styleConfig.strokeStyle) {
-            CellEngine.context2d.strokeStyle = this.styleConfig.strokeStyle
+            ctx.strokeStyle = this.styleConfig.strokeStyle
         }
         if (this.styleConfig.lineWidth) {
-            CellEngine.context2d.lineWidth = this.styleConfig.lineWidth
+            ctx.lineWidth = this.styleConfig.lineWidth
         }
         
-        
-        CellEngine.context2d.beginPath()
-        CellEngine.context2d.strokeRect(this.point.x, this.point.y, gapSize, gapSize)
+        ctx.beginPath()
+        ctx.strokeRect(this.point.x, this.point.y, gapSize, gapSize)
 
         // CellEngine.context2d.moveTo(
         //     Math.floor(this.point.x), 
@@ -60,9 +52,9 @@ class IsometricTile extends Shape {
         //     Math.floor(this.point.y - gapSize - gapSize * 0.5)
         // )
 
-        CellEngine.context2d.closePath()
-        CellEngine.context2d.stroke()
-        CellEngine.context2d.fill()
+        ctx.closePath()
+        ctx.stroke()
+        ctx.fill()
     }
 }
 

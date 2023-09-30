@@ -2,8 +2,8 @@ export { Color } from "./Color"
 export { Point } from "./Point"
 export { CellMath } from "./Math"
 
-import { Color } from "./Color"
 import Point, { Point3D } from "./Point"
+import Renderer from "./Renderer"
 import BoundingBox from "./Shape/BoundingBox"
 import { Shape } from "./Shape/Shape"
 
@@ -33,31 +33,24 @@ export enum States {
 }
 
 export type CellConfig = { 
-    fpsLimit?: number,
+    fpsLimit: number,
     drawMode?: DrawMode
 }
-
-// export type BoundingBox = {
-//     minX: number,
-//     maxX: number,
-//     minY: number,
-//     maxY: number,
-//     minZ: number,
-//     maxZ: number
-// }
 
 /**
  * our underlying draw and (future) p2p/web traffic logic
  * goal: ConwayGame should be main bootstrap file and interface between human/UI and logic
  */
-export class CellEngine {
-    static context2d: CanvasRenderingContext2D
-    private gameState: States = States.RUNNING
-    private drawMode: DrawMode = DrawMode.DEFAULT
-
-    private elapsedFrameTime: number = 0
-
+export class CellEngine extends Renderer {
     private _stateCallables: Map<States, Function[]> = new Map()
+
+    public config: CellConfig = {
+        drawMode: DrawMode.DEFAULT,
+        fpsLimit: 10
+    }
+
+    private gameState: States = States.RUNNING
+    private elapsedFrameTime: number = 0
 
     private _fps: number = MAX_FPS
     public get fps(): number {
@@ -81,36 +74,10 @@ export class CellEngine {
         this._allowTick = value
     }
 
-    /**
-     * faster ordering => drawlist:
-     * drawOrderIndex (x + y + z) => assetIndex (drawOrderIndex + assetName)
-     * 
-     * 
-     * assetList
-     * assetIndex => asset (shape)
-     */
-
-    // Simple array of drawable assets ordered by drawOrderIndex (positive int)
-    private drawableAssets: Record<DrawMode, Shape[]> = {
-        [DrawMode.DEFAULT]: [],
-        [DrawMode.ISOMETRIC]: []
-    }
-
-    private indexedAssets: Record<DrawMode, Map<string, Shape>> = {
-        [DrawMode.DEFAULT]: new Map(),
-        [DrawMode.ISOMETRIC]: new Map()
-    }
-
-    constructor (private canvas: HTMLCanvasElement, private config?: CellConfig) {
-        CellEngine.context2d = canvas.getContext("2d")!
-        this.drawMode = config?.drawMode ?? this.drawMode
-        this.fps = config?.fpsLimit ?? 60
+    constructor (canvas: HTMLCanvasElement) {
+        super(canvas)
         this.loop()
     }
-
-    getContext = () => CellEngine.context2d
-    getState = () => this.gameState
-    setState = (state: States) => this.gameState = state
 
     /* GAME LOOP */
     private loop = async () => {
@@ -132,7 +99,7 @@ export class CellEngine {
 
             setTimeout(() => {
                 requestAnimationFrame(this.loop)
-            }, 1000 / this.fps)
+            }, 1000 / this.config.fpsLimit)
         })
         this.elapsedFrameTime = timeToRun
     }
@@ -152,17 +119,17 @@ export class CellEngine {
     update = () => {
         // RUN UPDATE ON DRAWABLE SHAPE MAP TO CORRECT ORDER (SUPPOT PLAYER CLIPPING AND STUFF)
         // TODO Optimize, dont need to reorder everything every frame!
-        this.drawableAssets[DrawMode.ISOMETRIC] = this.drawableAssets[DrawMode.ISOMETRIC].sort(this.sortShapesByDrawpriority)
-        this.drawableAssets[DrawMode.DEFAULT] = this.drawableAssets[DrawMode.DEFAULT].sort(this.sortShapesByDrawpriority)
+        const sortedDefaultAssets = this.getDrawables(DrawMode.DEFAULT).sort(this.sortShapesByDrawpriority)
+        const sortedIsometricAssets = this.getDrawables(DrawMode.ISOMETRIC).sort(this.sortShapesByDrawpriority)
 
         // other stuff
-        for (const shape of this.drawableAssets[DrawMode.DEFAULT]) {
+        for (const shape of sortedDefaultAssets) {
             if (shape.updatable && shape.visible) {
                 shape.update()
             }
         }
         // world stuff
-        for (const shape of this.drawableAssets[DrawMode.ISOMETRIC]) {  
+        for (const shape of sortedIsometricAssets) {  
             if (shape.updatable && shape.visible) {
                 shape.update()
             }
@@ -193,6 +160,11 @@ export class CellEngine {
         }
     }
 
+    setConfig = (config: CellConfig) => this.config = config
+
+    getState = () => this.gameState
+    setState = (state: States) => this.gameState = state
+
     on = (eventName: keyof HTMLElementEventMap, callable: Function, bindElement?: HTMLElement | Window) => {
         const eventElement = bindElement ?? this.canvas
 
@@ -215,44 +187,14 @@ export class CellEngine {
         eventElement.removeEventListener(eventName, eventCallback)
     }
 
-    /* THE ACTUAL DRAWING OF GAME WORLD */
-    draw = () => {
-        this.clearCanvas()
-        
-        this.getContext().save()
-        this.drawShapes(this.drawableAssets[DrawMode.DEFAULT])
-        this.getContext().restore()
-
-        this.getContext().save()
-        this.getContext().translate(this.canvas.width / 2, 200)
-        this.drawShapes(this.drawableAssets[DrawMode.ISOMETRIC])
-        this.getContext().restore()
-    }
-
-    drawShapes = (shapeMap: Shape[]) => {
-        for (const shape of shapeMap) {
-            if (shape.visible) {
-                shape.draw()
-                // shape.highlightColor = null
-            }
-        }
-    }
-
-    /* DRAW CODE  */
-    // Support Shape's that are collections of other shapes (level of cubes, grid of tiles, ...)
-    addShape = (shape: Shape, mode: DrawMode = DrawMode.DEFAULT ) => {
+    addShape = (shape: Shape, drawMode?: DrawMode) => {
         if (shape.isCollection()) {
-            shape.getShapeCollection().forEach((shape) => this.addShape(shape, mode))
+            shape.getShapeCollection().forEach((shape) => this.addShape(shape, drawMode))
             return
         }
-        
         shape.bind(this)
-
-        this.drawableAssets[mode].push(shape)
-        this.indexedAssets[mode].set(
-            shape.toString(),
-            shape
-        )
+        // console.log('addShape, ', shape)
+        this.addDrawable(shape, drawMode)
     }
 
     // 3d (x,y,z,)
@@ -270,10 +212,9 @@ export class CellEngine {
 
                     // find shape by position
                     // TODO we can do more efficient
-                    const otherShape = this.indexedAssets[DrawMode.ISOMETRIC].get(new Point3D(x, y, z).toString())
+                    const otherShape = this.getIndexedAssets(DrawMode.ISOMETRIC).get(new Point3D(x, y, z).toString())
 
                     if (otherShape) {
-                        otherShape.highlightColor = new Color("#00FF00")
                         results.push(otherShape)
                     } 
 
@@ -285,13 +226,6 @@ export class CellEngine {
         }
 
         return results
-    }
-
-    sortShapesByDrawpriority = (inputA: Shape, inputB: Shape) => {
-        if (inputA.getDrawPriority() == inputB.getDrawPriority()) {
-            return -1 // 0
-        }
-        return inputA.getDrawPriority() > inputB.getDrawPriority() ? 1 : -1 
     }
 
     getWindowoffset = () => {
@@ -315,23 +249,6 @@ export class CellEngine {
     /** GAME STATE MANAGEMENT */
     isRunning = () => this.getState() == States.RUNNING
     isPaused = () => this.getState() == States.PAUSED
-
-    /* CANVAS */
-    clearCanvas = () => CellEngine.context2d.clearRect(0, 0, this.canvas.width, this.canvas.height)
-    getCanvas = (): HTMLCanvasElement => this.canvas
-    getCanvasSize = (): Dimension => ({ width: this.canvas.width, height: this.canvas.height })
-
-    setCanvasBackground = (color: Color) => {
-        CellEngine.context2d.fillStyle = color.toString()
-        CellEngine.context2d.fillRect(0, 0, this.canvas.width, this.canvas.height)
-    }
-    setCanvasSize = (width: number, height: number): this => {
-        this.canvas.style.width = width + "px"
-        this.canvas.style.height = height + "px"
-        this.canvas.width = width
-        this.canvas.height = height
-        return this
-    }
 
     // other
     getPointFromMouseEvent = (mouseEvent: MouseEvent): Point => {

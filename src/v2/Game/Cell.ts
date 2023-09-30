@@ -38,8 +38,9 @@ class Cell extends Shape {
     setAliveNeighbours = (amount: number) => this.aliveNeighbours = amount 
  
     draw = () => {
-        if (this.color && CellEngine.context2d.fillStyle !== this.color.toString()) {
-            CellEngine.context2d.fillStyle = this.color.toString()
+        if (this.color) {
+            const context = this.engineInstance?.getContext()!
+            context.fillStyle = this.color.toString()
         }
         this.shape.draw()
     }

@@ -1,7 +1,7 @@
 import { CellEngine, Color, Point } from "../CellEngine"
 import { Shape, ShapeStyle } from "./Shape"
 
-class Line implements Shape {
+class Line extends Shape {
     constructor(
         private startPoint: Point,
         private endPoint: Point,
@@ -9,6 +9,7 @@ class Line implements Shape {
     ) {}
 
     draw = () => {
+        
         if (this.style?.strokeStyle) {
             CellEngine.context2d.strokeStyle = this.style?.strokeStyle
         }
