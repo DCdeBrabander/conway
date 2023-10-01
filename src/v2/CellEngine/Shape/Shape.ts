@@ -13,9 +13,7 @@ export abstract class Shape {
     public neighbours: ShapeCollection = []
 
     public position: Point3D = new Point3D(0, 0, 0)
-
     public dimension: Dimension3d = { width: 0, height: 0, depth: 0 }
-
     public boundingBox: BoundingBox = new BoundingBox(this.position, this.dimension)
 
     public canCollide: boolean = false
@@ -31,24 +29,18 @@ export abstract class Shape {
         this.className = className ?? this.constructor.name
     }
 
-    setNeighbours = (neighbours: ShapeCollection) => {
-        this.neighbours = neighbours
-    }
+    toString = (): string => this.position.toString() // + "_" + this.className
 
-    addNeighbours = (neighbour: Shape) => {
-        this.neighbours.push(neighbour)
-    }
+    outline = (color?: Color): this => this
 
-    getCurrentNeighbours = () => {
-        return this.neighbours
-    }
+    setNeighbours = (neighbours: ShapeCollection) => this.neighbours = neighbours
+    addNeighbours = (neighbour: Shape) => this.neighbours.push(neighbour)
+    getCurrentNeighbours = () => this.neighbours
 
     // TODO its not area in pixels but Point3d's / positions
-    findNeighbours = (positionOffset = 1, maxResults: number = 10) => {
+    findNeighbours = (positionOffset = 1, maxResults: number = 8) => {
         return this.engineInstance?.getAreaOfShapes(this, positionOffset, maxResults)
     }
-
-    toString = (): string => this.position.toString() // + "_" + this.className
 
     updateDimension = (newDimension: Dimension3d) => {
         this.dimension = newDimension
@@ -74,11 +66,11 @@ export abstract class Shape {
         return this
     }
 
-    isCollidingWith = (otherShape: Shape): boolean => {
+    isCollidingWithShape = (otherShape: Shape): boolean => {
         return CellEngine.intersect(this.boundingBox, otherShape.boundingBox)
     }
 
-    isPointCollidingWith = (point:Point3D, otherShape: Shape): boolean => {
+    isCollidingWithShapeFromPoint = (point:Point3D, otherShape: Shape): boolean => {
         return CellEngine.intersect(new BoundingBox(point, this.dimension), otherShape.boundingBox)
     }
 

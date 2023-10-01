@@ -6,23 +6,26 @@ class Line extends Shape {
         private startPoint: Point,
         private endPoint: Point,
         private style?: ShapeStyle
-    ) {}
+    ) {
+        super("Line")
+    }
 
     draw = () => {
-        
+        const ctx = this.engineInstance?.getRenderer().getContext()!
+
         if (this.style?.strokeStyle) {
-            CellEngine.context2d.strokeStyle = this.style?.strokeStyle
+            ctx.strokeStyle = this.style?.strokeStyle
         }
         if (this.style?.lineWidth) {
-            CellEngine.context2d.lineWidth = this.style?.lineWidth
+            ctx.lineWidth = this.style?.lineWidth
         }
 
-        CellEngine.context2d.beginPath()
+        ctx.beginPath()
         
-        CellEngine.context2d.moveTo(this.startPoint.x, this.startPoint.y)
-        CellEngine.context2d.lineTo(this.endPoint.x, this.endPoint.y)
+        ctx.moveTo(this.startPoint.x, this.startPoint.y)
+        ctx.lineTo(this.endPoint.x, this.endPoint.y)
         
-        CellEngine.context2d.stroke()
+        ctx.stroke()
     }
 }
 

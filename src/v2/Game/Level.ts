@@ -1,6 +1,6 @@
 import { Color } from "../CellEngine/CellEngine"
 import { Point3D } from "../CellEngine/Point"
-import Cube from "../CellEngine/Shape/Cube"
+import Cube from "../CellEngine/Shape/Isometric/Cube"
 import Shape from "../CellEngine/Shape/Shape"
 import level_1 from "./Map/level_1"
 

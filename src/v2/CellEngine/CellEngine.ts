@@ -2,9 +2,12 @@ export { Color } from "./Color"
 export { Point } from "./Point"
 export { CellMath } from "./Math"
 
+import SomeGame from "../game"
+import { Color } from "./Color"
 import Point, { Point3D } from "./Point"
 import Renderer from "./Renderer"
 import BoundingBox from "./Shape/BoundingBox"
+import Cube from "./Shape/Isometric/Cube"
 import { Shape } from "./Shape/Shape"
 
 export const MAX_FPS: number = 60
@@ -41,8 +44,10 @@ export type CellConfig = {
  * our underlying draw and (future) p2p/web traffic logic
  * goal: ConwayGame should be main bootstrap file and interface between human/UI and logic
  */
-export class CellEngine extends Renderer {
+export class CellEngine {
     private _stateCallables: Map<States, Function[]> = new Map()
+
+    private renderer: Renderer
 
     public config: CellConfig = {
         drawMode: DrawMode.DEFAULT,
@@ -75,7 +80,7 @@ export class CellEngine extends Renderer {
     }
 
     constructor (canvas: HTMLCanvasElement) {
-        super(canvas)
+        this.renderer = new Renderer(canvas)
         this.loop()
     }
 
@@ -85,6 +90,7 @@ export class CellEngine extends Renderer {
             switch (this.getState()) {
                 case States.RUNNING:
                     this.update()
+                    this.renderer.draw()
                     this.onRunning()
                     break
                 case States.PAUSED:
@@ -94,8 +100,6 @@ export class CellEngine extends Renderer {
                     this.onTick()
                     break
             }
-
-            this.draw()
 
             setTimeout(() => {
                 requestAnimationFrame(this.loop)
@@ -119,18 +123,20 @@ export class CellEngine extends Renderer {
     update = () => {
         // RUN UPDATE ON DRAWABLE SHAPE MAP TO CORRECT ORDER (SUPPOT PLAYER CLIPPING AND STUFF)
         // TODO Optimize, dont need to reorder everything every frame!
-        const sortedDefaultAssets = this.getDrawables(DrawMode.DEFAULT).sort(this.sortShapesByDrawpriority)
-        const sortedIsometricAssets = this.getDrawables(DrawMode.ISOMETRIC).sort(this.sortShapesByDrawpriority)
+        const sortedDefaultAssets = this.renderer.getDrawables(DrawMode.DEFAULT)
+            .sort(this.renderer.sortShapesByDrawpriority)
+        const sortedIsometricAssets = this.renderer.getDrawables(DrawMode.ISOMETRIC)
+            .sort(this.renderer.sortShapesByDrawpriority)
 
         // other stuff
         for (const shape of sortedDefaultAssets) {
-            if (shape.updatable && shape.visible) {
+            if (shape.updatable) {
                 shape.update()
             }
         }
         // world stuff
         for (const shape of sortedIsometricAssets) {  
-            if (shape.updatable && shape.visible) {
+            if (shape.updatable) {
                 shape.update()
             }
         }
@@ -162,11 +168,13 @@ export class CellEngine extends Renderer {
 
     setConfig = (config: CellConfig) => this.config = config
 
+    getRenderer = () => this.renderer
+
     getState = () => this.gameState
     setState = (state: States) => this.gameState = state
 
     on = (eventName: keyof HTMLElementEventMap, callable: Function, bindElement?: HTMLElement | Window) => {
-        const eventElement = bindElement ?? this.canvas
+        const eventElement = bindElement ?? this.renderer.getCanvas()
 
         if ( ! eventElement || ! eventElement?.addEventListener) {
             console.warn("Cant add event-listener on: ", eventElement)
@@ -177,7 +185,7 @@ export class CellEngine extends Renderer {
     }
 
     off = (eventName: string, eventCallback = () => {}, bindElement?: HTMLElement) => {
-        const eventElement = bindElement ?? this.canvas
+        const eventElement = bindElement ?? this.renderer.getCanvas()
 
         if ( ! eventElement || ! eventElement?.addEventListener) {
             console.warn("Cant add event-listener on: ", eventElement)
@@ -193,32 +201,48 @@ export class CellEngine extends Renderer {
             return
         }
         shape.bind(this)
-        // console.log('addShape, ', shape)
-        this.addDrawable(shape, drawMode)
+        this.renderer.addDrawable(shape, drawMode)
     }
 
     // 3d (x,y,z,)
-    getAreaOfShapes = (shape: Shape, areaPointOffset: number = 2, maxResults = 5) => {
+    // Default max results = 8 because of 8 'tiles' around center tile
+    getAreaOfShapes = (shape: Shape, areaPointOffset: number = 2, maxResults = 30) => {
         const results = []
 
-        const area = new BoundingBox(
-            shape.position, 
-            { width: areaPointOffset, height: areaPointOffset, depth: areaPointOffset }
-        )
+        // console.log(shape)
 
+        // console.log(shape.dimension)
+        // TODO fix this Math.floor workaround (we can only check in x/y coordinates, not total sizes...)
+        // 100 == tileSize * 2 (see game + Cube.ts)
+        // 50 == tileSize (see game + Cube.ts)
+
+        const area = {
+            minX: shape.position.x ,
+            maxX: shape.position.x + 2,
+            
+            minY: shape.position.y ,
+            maxY: shape.position.y + 2,
+
+            minZ: shape.position.z,
+            maxZ: shape.position.z + 2
+        }
+
+        // loop through every Z, for every Y, for every X
         areaLoop: for (let x = area.minX; x <= area.maxX; x++) {
             for (let y = area.minY; y <= area.maxY; y++) {
                 for (let z = area.minZ; z <= area.maxZ; z++) {
+                    // find shape by position, TODO we can do more efficient
+                    const otherShape = this.renderer.findIndexedAsset(
+                        new Point3D(x, y, z).toString(),
+                        DrawMode.ISOMETRIC
+                    )
 
-                    // find shape by position
-                    // TODO we can do more efficient
-                    const otherShape = this.getIndexedAssets(DrawMode.ISOMETRIC).get(new Point3D(x, y, z).toString())
-
-                    if (otherShape) {
+                    if (otherShape && shape.className !== otherShape?.className) {
+                        // otherShape.outline(new Color("#00FF00")).draw()
                         results.push(otherShape)
                     } 
 
-                    if (results.length >= maxResults){
+                    if (results.length >= 50){
                         break areaLoop
                     }
                 }
@@ -226,13 +250,6 @@ export class CellEngine extends Renderer {
         }
 
         return results
-    }
-
-    getWindowoffset = () => {
-        return {
-            offsetX: this.canvas.width / 2,
-            offsetY: 0 //this.canvas.height / 2
-        }
     }
 
     /* FRAME TIME */
@@ -252,7 +269,7 @@ export class CellEngine extends Renderer {
 
     // other
     getPointFromMouseEvent = (mouseEvent: MouseEvent): Point => {
-        const canvas = this.getCanvas()
+        const canvas = this.renderer.getCanvas()
         const { top, left } = canvas.getBoundingClientRect()
 
         return new Point(
@@ -267,8 +284,18 @@ export class CellEngine extends Renderer {
     }
 
     static intersect = (boundingBoxA: BoundingBox, boundingBoxB: BoundingBox): boolean => {
-        return (boundingBoxA.minX <= boundingBoxB.maxX && boundingBoxA.maxX >= boundingBoxB.minX) &&
-               (boundingBoxA.minY <= boundingBoxB.maxY && boundingBoxA.maxY >= boundingBoxB.minY) &&
-               (boundingBoxA.minZ <= boundingBoxB.maxZ && boundingBoxA.maxZ >= boundingBoxB.minZ)
+
+        // return (boundingBoxA.minX <= boundingBoxB.maxX || boundingBoxA.maxX >= boundingBoxB.minX) ||
+        //        (boundingBoxA.minY <= boundingBoxB.maxY || boundingBoxA.maxY >= boundingBoxB.minY) ||
+        //        (boundingBoxA.minZ <= boundingBoxB.maxZ || boundingBoxA.maxZ >= boundingBoxB.minZ)
+
+        return (
+                boundingBoxA.minX <= boundingBoxB.maxX &&
+                boundingBoxA.maxX >= boundingBoxB.minX &&
+                boundingBoxA.minY <= boundingBoxB.maxY &&
+                boundingBoxA.maxY >= boundingBoxB.minY &&
+                boundingBoxA.minZ <= boundingBoxB.maxZ &&
+                boundingBoxA.maxZ >= boundingBoxB.minZ
+              );
     }
 }

@@ -24,6 +24,7 @@ class Renderer {
 
     /* THE ACTUAL DRAWING OF GAME WORLD */
     draw = () => {
+        // console.info('draw')
         this.clearCanvas()
         
         this.context.save()
@@ -53,19 +54,21 @@ class Renderer {
             shape.getShapeCollection().forEach((shape) => this.addDrawable(shape, mode))
             return
         }
-        
+
+        // Just a list of the assets for quick loop and draw
         this.drawableAssets[mode].push(shape)
+
+        // indexed list of shapes to search by key
         this.indexedAssets[mode].set(
             shape.toString(),
             shape
         )
     }
 
+    findIndexedAsset = (key: string, drawMode: DrawMode): Shape | null => {
+        return this.indexedAssets[drawMode].get(key) ?? null
+    }
     getIndexedAssets = (drawMode: DrawMode) => this.indexedAssets[drawMode]
-
-    // updateIndexedDrawables = (mode: DrawMode) => {
-    //    this.indexedAssets[mode] = this.getDrawables(DrawMode.DEFAULT).sort(this.sortShapesByDrawpriority)
-    // }
 
     getDrawables = (mode: DrawMode) => this.drawableAssets[mode] ?? []
 

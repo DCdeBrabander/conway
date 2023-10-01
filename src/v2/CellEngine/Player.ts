@@ -1,11 +1,12 @@
+import { CellEngine } from "./CellEngine";
 import { Color } from "./Color";
 import { Point3D } from "./Point";
+import BoundingBox from "./Shape/BoundingBox";
 import Shape from "./Shape/Shape";
 
 export class Player extends Shape {
 
-    private moveSpeed = 1
-
+    private moveSpeed = 0.4
     private nextPosition: Point3D = new Point3D(0, 0, 0)
 
     constructor(private asset: Shape, player: number = 1) {
@@ -26,24 +27,52 @@ export class Player extends Shape {
     }
 
     update = () => {
-        this.findNeighbours()?.forEach((neighbourShape: Shape) => {
-            neighbourShape.highlightColor = new Color("#00FF00")
-            if (this.isPointCollidingWith(this.nextPosition, neighbourShape)) {
-                console.log("YES")
-            }
-        })
+        console.log("Try updating to new position: ", this.nextPosition)
 
-        // Player instance position is not (yet?) same as the asset (visual/shape) position
-        this.updatePosition(this.nextPosition)
-        this.asset.updatePosition(this.nextPosition)
+        let isColliding = false
+        
+        this.updateNeighbours()
+        const currentNeighbours = this.getCurrentNeighbours()
+        
+        console.log("Searched and updated current neighbour shapes of player: ", currentNeighbours.length)
+        
+        if (currentNeighbours.length) {
+            const newBoundingBox = new BoundingBox(this.nextPosition, this.dimension)
+            
+            for (const otherShape of currentNeighbours) {
+                if (newBoundingBox.intersects(otherShape.boundingBox)){
+                    console.info("Colliding with", otherShape.className)
+                    isColliding = true
+                    // this.updatable = false
+                    return
+                }
+            }
+        }
+
+        if ( ! isColliding) {
+            console.info('no collision? moving to ', this.nextPosition)
+            // Player instance position is not (yet?) same as the asset (visual/shape) position
+            this.moveTo(this.nextPosition)
+        }
 
         this.updatable = false
     }
 
-    draw = () => { 
+    updateNeighbours = () => {
+        this.setNeighbours( this.findNeighbours() ?? [] )
+    }
+
+    moveTo = (position: Point3D) => {
+        this.updatePosition(position)
+        this.asset.updatePosition(position)
+    }
+
+    draw = () => {
         if (! this.asset.engineInstance ) {
             this.asset.engineInstance = this.engineInstance
         }
+        this.updateNeighbours()
+
         this.asset.draw()
     }
 
@@ -72,7 +101,7 @@ export class Player extends Shape {
                 this.nextPosition = {...this.position, x: this.position.x + this.moveSpeed }
                 break
             default:
-                break
+                return
         }
         this.updatable = true
     }

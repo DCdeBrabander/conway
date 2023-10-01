@@ -6,7 +6,7 @@ class Rectangle extends Shape {
     private strokeColor: Color = new Color("#000000")
 
     draw = () => {
-        const ctx = this.engineInstance?.getContext()!
+        const ctx = this.engineInstance?.getRenderer().getContext()!
 
         ctx.beginPath()
       

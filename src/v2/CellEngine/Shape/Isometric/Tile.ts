@@ -1,13 +1,10 @@
-import { CellEngine, Color } from "../CellEngine/CellEngine";
-import Point from "../CellEngine/Point";
-import Line from "../CellEngine/Shape/Line";
-import Shape, { ShapeStyle } from "../CellEngine/Shape/Shape";
-import Square from "../CellEngine/Shape/Square";
+import Point from "../../Point";
+import Shape, { ShapeStyle } from "../Shape";
 
 type TileConfig = ShapeStyle & {
     gapSize: number
 }
-class IsometricTile extends Shape {
+class Tile extends Shape {
     constructor(
         public point: Point, 
         public styleConfig: TileConfig,
@@ -17,7 +14,7 @@ class IsometricTile extends Shape {
 
     draw = () => {
         const gapSize = this.styleConfig.gapSize
-        const ctx = this.engineInstance?.getContext()!
+        const ctx = this.engineInstance?.getRenderer().getContext()!
 
         if (this.styleConfig.fillStyle) {
             ctx.fillStyle = this.styleConfig.fillStyle
@@ -28,6 +25,9 @@ class IsometricTile extends Shape {
         if (this.styleConfig.lineWidth) {
             ctx.lineWidth = this.styleConfig.lineWidth
         }
+
+        // TODO
+        // isometric tile == cube with z=1 ??
         
         ctx.beginPath()
         ctx.strokeRect(this.point.x, this.point.y, gapSize, gapSize)
@@ -58,4 +58,4 @@ class IsometricTile extends Shape {
     }
 }
 
-export default IsometricTile
+export default Tile
