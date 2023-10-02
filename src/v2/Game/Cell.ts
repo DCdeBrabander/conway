@@ -39,7 +39,7 @@ class Cell extends Shape {
  
     draw = () => {
         if (this.color) {
-            const context = this.engineInstance?.getContext()!
+            const context = this.engine?.getContext()!
             context.fillStyle = this.color.toString()
         }
         this.shape.draw()

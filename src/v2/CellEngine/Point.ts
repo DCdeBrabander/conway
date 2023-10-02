@@ -2,11 +2,14 @@
  * 3D Point
  */
 export class Point3D {
+
+    public elevation: number = 1
+
     constructor(public x: number, public y: number, public z: number) {}
 
-    drawPriority = () => Math.floor(this.x + this.y + this.z)
+    drawPriority = () => Math.floor(this.x + this.y + (this.z - this.elevation))
 
-    toString = () => `[${Math.floor(this.x)}, ${Math.floor(this.y)}, ${Math.floor(this.z)}]`
+    toString = () => `${Math.floor(this.x)}_${Math.floor(this.y)}_${Math.floor(this.z)}`
 }
 
 /**

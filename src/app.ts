@@ -7,13 +7,5 @@ document.addEventListener("DOMContentLoaded", () => {
     CanvasElement = document.getElementById("conway-canvas") as HTMLCanvasElement
 
     // Let's go ;-)
-    Game = new SomeGame(CanvasElement, { fpsLimit: 20, tileSize: 50 })
-
-    // we want 'true 2:1' ratio for our isometric shiz 
-
-    // let mouseTileSize = tileSize / 2
-
-
-    // let worldOffsetX = width / 2
-    // let worldOffsetY = 200
+    Game = new SomeGame(CanvasElement, { fpsLimit: 2, tileSize: 50 })
 })

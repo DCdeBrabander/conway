@@ -25,6 +25,7 @@ class Level extends Shape {
                         this.getAssetColor(assetIdentifier),
                     )
 
+                    LevelCube.elevation = 1
                     LevelCube.className = "Level_" + LevelCube.className
                     this.shapeCollection.push( LevelCube )
                 })

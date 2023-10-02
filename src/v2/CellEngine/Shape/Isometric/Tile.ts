@@ -14,7 +14,7 @@ class Tile extends Shape {
 
     draw = () => {
         const gapSize = this.styleConfig.gapSize
-        const ctx = this.engineInstance?.getRenderer().getContext()!
+        const ctx = this.engine?.getRenderer().getContext()!
 
         if (this.styleConfig.fillStyle) {
             ctx.fillStyle = this.styleConfig.fillStyle

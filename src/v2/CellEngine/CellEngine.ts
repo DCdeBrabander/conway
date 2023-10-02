@@ -2,21 +2,11 @@ export { Color } from "./Color"
 export { Point } from "./Point"
 export { CellMath } from "./Math"
 
-import SomeGame from "../game"
-import { Color } from "./Color"
-import Point, { Point3D } from "./Point"
-import Renderer from "./Renderer"
+import { Player } from "./Player"
+import Point from "./Point"
+import Renderer, { DrawMode, MAX_FPS } from "./Renderer"
 import BoundingBox from "./Shape/BoundingBox"
-import Cube from "./Shape/Isometric/Cube"
 import { Shape } from "./Shape/Shape"
-
-export const MAX_FPS: number = 60
-
-// TODO Rename DrawMode to ProjectionType (or something)
-export enum DrawMode {
-    ISOMETRIC = "isometric",
-    DEFAULT = "default"
-}
 
 export type Dimension = {
     width: number,
@@ -36,7 +26,7 @@ export enum States {
 }
 
 export type CellConfig = { 
-    fpsLimit: number,
+    fpsLimit?: number,
     drawMode?: DrawMode
 }
 
@@ -46,29 +36,10 @@ export type CellConfig = {
  */
 export class CellEngine {
     private _stateCallables: Map<States, Function[]> = new Map()
-
     private renderer: Renderer
-
-    public config: CellConfig = {
-        drawMode: DrawMode.DEFAULT,
-        fpsLimit: 10
-    }
 
     private gameState: States = States.RUNNING
     private elapsedFrameTime: number = 0
-
-    private _fps: number = MAX_FPS
-    public get fps(): number {
-        return this._fps
-    }
-    public set fps(value: number) {
-        if (value > MAX_FPS) {
-            console.info("Maximum FPS is: " + MAX_FPS)
-            this._fps = MAX_FPS
-        } else {
-            this._fps = value
-        }
-    }
 
     private _allowTick: boolean = false
 
@@ -79,8 +50,11 @@ export class CellEngine {
         this._allowTick = value
     }
 
-    constructor (canvas: HTMLCanvasElement) {
+    private activePlayers: Player[] = []
+
+    constructor (canvas: HTMLCanvasElement, public config?: CellConfig) {
         this.renderer = new Renderer(canvas)
+        this.renderer.defaultDrawMode = config?.drawMode ?? DrawMode.DEFAULT
         this.loop()
     }
 
@@ -103,7 +77,7 @@ export class CellEngine {
 
             setTimeout(() => {
                 requestAnimationFrame(this.loop)
-            }, 1000 / this.config.fpsLimit)
+            }, 1000 / this.config?.fpsLimit! ?? MAX_FPS)
         })
         this.elapsedFrameTime = timeToRun
     }
@@ -127,6 +101,13 @@ export class CellEngine {
             .sort(this.renderer.sortShapesByDrawpriority)
         const sortedIsometricAssets = this.renderer.getDrawables(DrawMode.ISOMETRIC)
             .sort(this.renderer.sortShapesByDrawpriority)
+
+
+        // player stuff
+        for(const player of this.activePlayers) {
+            player.update()
+            // player.draw()
+        }
 
         // other stuff
         for (const shape of sortedDefaultAssets) {
@@ -204,52 +185,9 @@ export class CellEngine {
         this.renderer.addDrawable(shape, drawMode)
     }
 
-    // 3d (x,y,z,)
-    // Default max results = 8 because of 8 'tiles' around center tile
-    getAreaOfShapes = (shape: Shape, areaPointOffset: number = 2, maxResults = 30) => {
-        const results = []
-
-        // console.log(shape)
-
-        // console.log(shape.dimension)
-        // TODO fix this Math.floor workaround (we can only check in x/y coordinates, not total sizes...)
-        // 100 == tileSize * 2 (see game + Cube.ts)
-        // 50 == tileSize (see game + Cube.ts)
-
-        const area = {
-            minX: shape.position.x ,
-            maxX: shape.position.x + 2,
-            
-            minY: shape.position.y ,
-            maxY: shape.position.y + 2,
-
-            minZ: shape.position.z,
-            maxZ: shape.position.z + 2
-        }
-
-        // loop through every Z, for every Y, for every X
-        areaLoop: for (let x = area.minX; x <= area.maxX; x++) {
-            for (let y = area.minY; y <= area.maxY; y++) {
-                for (let z = area.minZ; z <= area.maxZ; z++) {
-                    // find shape by position, TODO we can do more efficient
-                    const otherShape = this.renderer.findIndexedAsset(
-                        new Point3D(x, y, z).toString(),
-                        DrawMode.ISOMETRIC
-                    )
-
-                    if (otherShape && shape.className !== otherShape?.className) {
-                        // otherShape.outline(new Color("#00FF00")).draw()
-                        results.push(otherShape)
-                    } 
-
-                    if (results.length >= 50){
-                        break areaLoop
-                    }
-                }
-            }
-        }
-
-        return results
+    addPlayer = (player: Player, drawMode?: DrawMode) => {
+        this.activePlayers.push(player) // track player to update
+        this.addShape(player.asset, drawMode) // add the drawable of player to list for drawing
     }
 
     /* FRAME TIME */

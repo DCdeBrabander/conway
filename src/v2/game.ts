@@ -1,16 +1,16 @@
-import { CellConfig, CellEngine, Color, DrawMode } from "./CellEngine/CellEngine"
+import { CellConfig, CellEngine, Color } from "./CellEngine/CellEngine"
 import { Player } from "./CellEngine/Player"
 import { Point3D } from "./CellEngine/Point"
+import { DrawMode } from "./CellEngine/Renderer"
 import Cube from "./CellEngine/Shape/Isometric/Cube"
 import Square from "./CellEngine/Shape/Square"
 import Level from "./Game/Level"
 import IsometricGrid from "./Game/Level"
 
 type SomeGameConfig = CellConfig & {
-    tileSize: number,
+    tileSize?: number,
     heightOffset?: number
 }
-
 
 const DEFAULT_CONFIG: SomeGameConfig = {
     tileSize: 20,
@@ -103,15 +103,17 @@ class SomeGame extends CellEngine {
 
         this.player = new Player(
             new Cube(
-                new Point3D(6, 6, 2),
+                new Point3D(0, 0, 1),
                 SomeGame.TILE_SIZE, 
                 new Color("#FF0000")
-            )
-        ).show()
+            ),
+            1
+        )
 
         this.addShape(this.level, DrawMode.ISOMETRIC)
-        this.addShape(this.player!, DrawMode.ISOMETRIC)
         this.addShape(this.mouseTile)
+
+        this.addPlayer(this.player!, DrawMode.ISOMETRIC)
     }
 
     onResize = (onResizeCallback: Function) => {

@@ -4,20 +4,22 @@ import { Point3D } from "../../Point";
 import Shape from "../Shape";
 
 class Cube extends Shape {
-    constructor(position: Point3D, private size: number, public color: Color = new Color("#F00")){
+    constructor(position: Point3D, private size: number, public color: Color = new Color("#0000FF")){
         super()
-        this.position = position
-
+        
+        // console.log(position)
         // Ratio 2:1
         // TODO abstract this to more central engine isometric logic
-        this.dimension.width = size ? (size * 2) : (SomeGame.TILE_SIZE * 2)
+        this.dimension.width = size ? (size) : (SomeGame.TILE_SIZE)
         this.dimension.height = size ? size : SomeGame.TILE_SIZE
+        this.dimension.depth = this.dimension.height * position.z
 
+        this.updatePosition(position)
         this.updateDimension(this.dimension)
     }
 
     outline = (color?: Color) => {
-        const ctx = this.engineInstance?.getRenderer().getContext()!
+        const ctx = this.engine?.getRenderer().getContext()!
 
         const strokeColor = color?.toString() ?? this.highlightColor?.toString() ?? new Color("#AAAAAA").toString()
 
@@ -81,18 +83,18 @@ class Cube extends Shape {
     }
 
     draw = () => {
-        const ctx = this.engineInstance?.getRenderer().getContext()!
+        const ctx = this.engine?.getRenderer().getContext()!
 
-        const strokeColor = this.highlightColor 
+        const strokeColor = this.highlightColor
             ? this.highlightColor.toString() 
             : new Color("#AAAAAA").toString()
 
-        const topColor = this.color.toString()
-        const leftColor = this.color.getShade(20)
-        const rightColor = this.color.getShade(-20)
+        const topColor = (this.highlightColor ?? this.color).toString()
+        const leftColor = (this.highlightColor ?? this.color).getShade(20)
+        const rightColor = (this.highlightColor ?? this.color).getShade(-20)
 
         // Size of Cube
-        const sizeX = this.dimension.width
+        const sizeX = this.dimension.width * 2
         const sizeY = this.dimension.height
         
         // save context state before drawing
@@ -106,7 +108,7 @@ class Cube extends Shape {
             (this.position.x + this.position.y) * sizeY / 2
         )
         
-        let zOffset = this.position.z * sizeY
+        let zOffset = this.dimension.depth 
 
         // draw top
         ctx.beginPath()
@@ -149,6 +151,9 @@ class Cube extends Shape {
         ctx.lineWidth = 2
         ctx.stroke()
         ctx.fill()
+
+        // ctx.fillStyle = new Color("#00FF00").toString()
+        // ctx.fillText(this.position.toString(), this.position.x - 50, this.position.y - 50)
 
         // restore context state after drawing
         ctx.restore()

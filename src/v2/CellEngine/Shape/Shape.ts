@@ -1,17 +1,18 @@
 import { CellEngine, Color, Dimension3d } from "../CellEngine"
-import { Point3D } from "../Point"
+import Point, { Point3D } from "../Point"
 import BoundingBox from "./BoundingBox"
 
 export type ShapeCollection = Shape[]
 
 export abstract class Shape {
     public className: string
-    public engineInstance: CellEngine | null = null
+    public engine: CellEngine | null = null
 
     protected shapeCollection: ShapeCollection = []
 
     public neighbours: ShapeCollection = []
 
+    public elevation: number = 0
     public position: Point3D = new Point3D(0, 0, 0)
     public dimension: Dimension3d = { width: 0, height: 0, depth: 0 }
     public boundingBox: BoundingBox = new BoundingBox(this.position, this.dimension)
@@ -29,18 +30,24 @@ export abstract class Shape {
         this.className = className ?? this.constructor.name
     }
 
-    toString = (): string => this.position.toString() // + "_" + this.className
+    getRenderer = () => this.engine?.getRenderer()
+
+    toString = (): string => this.className
+
+    getFullPositionString = (): string => this.getNormalizedByElevationPoint() + "_" + this.elevation
+
+    // offset position x/y with elevation
+    getNormalizedByElevationPoint = () => new Point3D(
+        this.position.x + (this.elevation / 2),
+        this.position.y + (this.elevation / 2),
+        this.position.z
+    )
 
     outline = (color?: Color): this => this
 
     setNeighbours = (neighbours: ShapeCollection) => this.neighbours = neighbours
     addNeighbours = (neighbour: Shape) => this.neighbours.push(neighbour)
     getCurrentNeighbours = () => this.neighbours
-
-    // TODO its not area in pixels but Point3d's / positions
-    findNeighbours = (positionOffset = 1, maxResults: number = 8) => {
-        return this.engineInstance?.getAreaOfShapes(this, positionOffset, maxResults)
-    }
 
     updateDimension = (newDimension: Dimension3d) => {
         this.dimension = newDimension
@@ -102,8 +109,8 @@ export abstract class Shape {
         return this
     }
 
-    bind = (engineInstance: CellEngine) => {
-        this.engineInstance = engineInstance
+    bind = (engine: CellEngine) => {
+        this.engine = engine
     }
 }
 

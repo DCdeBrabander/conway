@@ -1,7 +1,17 @@
-import { Color, Dimension, DrawMode } from "./CellEngine"
+import { Color, Dimension } from "./CellEngine"
+import Point, { Point3D } from "./Point"
 import Shape from "./Shape/Shape"
 
+export const MAX_FPS: number = 60
+
+// TODO Rename DrawMode to ProjectionType (or something)
+export enum DrawMode {
+    ISOMETRIC = "isometric",
+    DEFAULT = "default"
+}
+
 class Renderer {
+    public defaultDrawMode: DrawMode = DrawMode.DEFAULT
 
     // private canvas: HTMLCanvasElement
     private context: CanvasRenderingContext2D
@@ -40,7 +50,6 @@ class Renderer {
     drawShapes = (shapeMap: Shape[]) => {
         for (const shape of shapeMap) {
             if (shape.visible) {
-                // console.log(shape.className, shape.engineInstance)
                 shape.draw()
                 shape.highlightColor = null
             }
@@ -59,15 +68,19 @@ class Renderer {
         this.drawableAssets[mode].push(shape)
 
         // indexed list of shapes to search by key
-        this.indexedAssets[mode].set(
-            shape.toString(),
-            shape
-        )
+        if ( ! this.indexedAssets[mode].get(shape.getFullPositionString())) {
+            this.indexedAssets[mode].set(
+                shape.getFullPositionString(),
+                shape
+            )
+        }
+      
     }
 
     findIndexedAsset = (key: string, drawMode: DrawMode): Shape | null => {
         return this.indexedAssets[drawMode].get(key) ?? null
     }
+
     getIndexedAssets = (drawMode: DrawMode) => this.indexedAssets[drawMode]
 
     getDrawables = (mode: DrawMode) => this.drawableAssets[mode] ?? []
@@ -77,6 +90,48 @@ class Renderer {
             return -1 // 0
         }
         return inputA.getDrawPriority() > inputB.getDrawPriority() ? 1 : -1 
+    }
+     // 3d (x,y,z,)
+    // Default max results = 8 because of 8 'tiles' around center tile
+    getAreaOfShapes = (shape: Shape, areaPointOffset: number = 2, maxResults = 30) => {
+        const results = []
+        const area = {
+            minX: shape.position.x - 1,
+            maxX: shape.position.x + 2,
+            
+            minY: shape.position.y - 1,
+            maxY: shape.position.y + 2,
+
+            minZ: shape.position.z,
+            maxZ: shape.position.z,
+            // maxZ: shape.position.z
+        }
+
+        // console.log(shape.position.z)
+
+        // loop through every Z, for every Y, for every X
+        areaLoop: for (let x = area.minX; x <= area.maxX; x++) {
+            for (let y = area.minY; y <= area.maxY; y++) {
+                for (let z = area.minZ; z <= area.maxZ; z++) {
+                    // find shape by position, TODO we can do more efficient
+                    const otherShape = this.findIndexedAsset(
+                        new Point3D(x, y, shape.position.z).toString(),
+                        DrawMode.ISOMETRIC
+                    )
+
+                    if (otherShape && shape.className !== otherShape?.className) {
+                        otherShape.highlightColor = new Color("#00FF00")
+                        results.push(otherShape)
+                    } 
+
+                    if (results.length >= 20){
+                        break areaLoop
+                    }
+                }
+            }
+        }
+
+        return results
     }
 
     /* CANVAS */

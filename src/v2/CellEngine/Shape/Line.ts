@@ -11,7 +11,7 @@ class Line extends Shape {
     }
 
     draw = () => {
-        const ctx = this.engineInstance?.getRenderer().getContext()!
+        const ctx = this.engine?.getRenderer().getContext()!
 
         if (this.style?.strokeStyle) {
             ctx.strokeStyle = this.style?.strokeStyle
